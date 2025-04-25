@@ -38,7 +38,11 @@ library(stringr) #working with strings into tidyverse and cleaning text strings
 
 #Function
 ```{r}
+# search URL (either by artist name, song name, etc.)
 
+# read lyrics page from html
+
+# extract lyrics
 ```
 
 5. Have songs become more repetitive over time? Summarize and visualize your repetitive measures from part 4. 
