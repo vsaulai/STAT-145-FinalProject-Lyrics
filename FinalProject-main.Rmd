@@ -27,6 +27,8 @@ library(stringr) #working with strings into tidyverse and cleaning text strings
 1. Your first task is to create a list of top songs, dating back to 1958 (when Billboard introduced it's Hot 100 yearly chart). You may want to start with just the yearly top song, but your work should be general enough to account for multiple songs per year. You may narrow your search to a particular genre if you like. You may use any website that provides this information, though you may try to find one that makes part 2 as simple as possible.
 git 
 
+Test
+
 2. For the top songs in part 1, gather some basic information: artist, title, year, genre (if appropriate), length, and other variables you think might be informative (sales figures, etc.).
 
 
