@@ -1,0 +1,92 @@
+---
+title: "JakeChristiansenCode"
+output: html_document
+---
+
+```{r}
+# Load required libraries
+library(rvest)
+library(dplyr)
+
+#Scrape the 1958 Top 20 Songs
+scrape_1958_top_20 <- function() {
+  # URL for 1958 data
+  url <- "https://en.wikipedia.org/wiki/Billboard_year-end_top_50_singles_of_1958"
+  
+  # Read the page
+  page <- read_html(url)
+  
+  # Extract the tables and select the first one
+  tables <- html_nodes(page, "table")
+  table_of_interest <- html_table(tables[[1]], fill = TRUE)
+  
+  # Extract the top 20 rows and add "Year" and "Rank" columns
+  top_20_songs <- tibble(table_of_interest[1:20, ], Year = 1958, Rank = 1:20)
+  
+  return(top_20_songs)
+}
+
+#Scrape 1959–2024 Top 20 Songs
+scrape_top_20_songs <- function(year) {
+  # Construct the URL dynamically
+  url <- paste0("https://en.wikipedia.org/wiki/Billboard_Year-End_Hot_100_singles_of_", year)
+  
+  # Try to read the page with error handling
+  page <- tryCatch(read_html(url), error = function(e) NULL)
+  on.exit(rm(page), add = TRUE)  # Clean up memory
+  gc()
+  
+  # Check if the page is accessible
+  if (is.null(page)) {
+    message(paste("Could not retrieve data for year:", year))
+    write(paste("Failed to retrieve:", year), file = "failed_urls.txt", append = TRUE)
+    return(NULL)
+  }
+  
+  # Extract tables and select the first one
+  tables <- html_nodes(page, "table")
+  if (length(tables) < 1) {
+    message(paste("No table found for year:", year))
+    write(paste("No table found:", year), file = "failed_urls.txt", append = TRUE)
+    return(NULL)
+  }
+  table_of_interest <- html_table(tables[[1]], fill = TRUE)
+  
+  # Extract the top 20 rows and add "Year" and "Rank" columns
+  top_20_songs <- tibble(table_of_interest[1:20, ], Year = year, Rank = 1:20)
+  
+  return(top_20_songs)
+}
+
+#Scrape the 1958 data
+message("Scraping data for 1958...")
+data_1958 <- scrape_1958_top_20()
+
+#Scrape the 1959–2024 data
+years <- 1959:2024  # Define the range of years
+all_years_data <- list()  # Initialize list to store yearly data
+
+for (year in years) {
+  message(paste("Scraping data for year:", year))
+  year_data <- scrape_top_20_songs(year)
+  if (!is.null(year_data)) {
+    all_years_data[[as.character(year)]] <- year_data
+  }
+}
+
+# Combine data from all years (1959–2024)
+data_1959_2024 <- bind_rows(all_years_data)
+
+#Combine the 1958 and 1959–2024 datasets
+combined_data <- bind_rows(data_1958, data_1959_2024)
+
+#Retain Only Relevant Columns
+cleaned_data <- combined_data %>%
+  select(Title, `Artist(s)`, Year, Rank)
+
+#Save the Cleaned Data to a CSV File
+write.csv(cleaned_data, "Top_20_Songs_1958_2024.csv", row.names = FALSE)
+
+```
+
+
