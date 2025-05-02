@@ -1,0 +1,149 @@
+---
+title: "SaulaiVueCode"
+author: "Saulai Vue"
+date: "2025-05-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Packages
+
+```{r}
+install.packages("rvest")
+install.packages("stringr")
+```
+
+```{r}
+library(stringr)
+library(conflicted)
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+library(rvest) #web scraping package and working with html
+library(stringr) #working with strings into tidyverse and cleaning text strings
+```
+
+## Read File & remove quotes from Title
+
+```{r}
+artist_songs20 <- read.csv("Top_20_Songs_1958_2024.csv")
+artist_songs20$Title <- gsub("[\"']", "", artist_songs20$Title) #remove quotes from Title
+view(artist_songs20)
+``` 
+
+## Function Split Multiple Songs('split_and_insert_row):
+
+```{r}
+# Function to split a column by "/" and create new rows
+split_and_insert_row <- function(df, column_name) {
+  # Create an empty list
+  new_rows <- list()
+  # Loop through each row of the dataframe
+  for (i in 1:nrow(df)) {
+    # Get the value in the specified column to split
+    values_to_split <- df[i, column_name]
+    
+    # If the value contains "/", split it and create new rows
+    if (grepl("/", values_to_split)) {
+      split_values <- strsplit(values_to_split, "/")[[1]]
+      
+      # For each split value, create a new row with the same other column values
+      for (split_value in split_values) {
+        new_row <- df[i, , drop = FALSE]  # Keep the row structure
+        new_row[[column_name]] <- split_value
+        new_rows <- append(new_rows, list(new_row))
+      }
+    } else {
+      # If no "/" is found, keep the row as is
+      new_rows <- append(new_rows, list(df[i, , drop = FALSE]))
+    }
+  }
+  # Combine the new rows into a data frame
+  new_df <- do.call(rbind, new_rows)
+  return(new_df)
+}
+```
+
+## Split and Insert Songs
+
+```{r}
+artist_songs20_split <- split_and_insert_row(artist_songs20, "Title") # arguments for function 'split_and_insert_row(data.frame, column name in quotes)'. ONLY splits after character "/"
+view(artist_songs20_split)
+```
+
+## Function Lyrics URL('generate_songlyrics_urls'):
+- Takes the artist name and song name from columns of data frame and generates a new url link for the song.
+- Only generates a vector.
+
+```{r}
+generate_songlyrics_urls <- function(df, artist_col, song_col, base_url_template) {
+  # Format for URL changing '-' and lowercase
+  format_for_url <- function(x) {
+    x <- tolower(x)                 # lowercase
+    x <- gsub("[^a-z0-9 ]", "", x)  # remove special characters
+    x <- gsub(" +", "-", x)         # replace spaces with hyphens
+    return(x)
+  }
+  # Extract base URL structure 4th Argument
+  base_parts <- unlist(strsplit(base_url_template, "/"))
+  base_domain <- paste(base_parts[1:3], collapse = "/")  # "https://www.songlyrics.com"
+  
+  # Generate URLs
+  urls <- mapply(function(artist, song) {
+    artist_url <- format_for_url(artist)
+    song_url <- format_for_url(song)
+    paste0(base_domain, "/", artist_url, "/", song_url, "-lyrics/")
+  }, df[[artist_col]], df[[song_col]])
+  
+  return(urls)
+}
+# NOTE: this function only returns a vector
+```
+
+## Combine with Dataframe
+
+```{r}
+lyrics_URL <- generate_songlyrics_urls(artist_songs20_split, "Artist.s.", "Title", "https://www.songlyrics.com")
+
+artist_songs20_withURL <- artist_songs20_split %>%
+                         mutate(lyrics_url = lyrics_URL)
+
+view(artist_songs20_withURL)
+```
+
+## Function to Scrape Lyrics from URL
+```{r}
+scrape_lyrics_from_urls <- function(df, url_col, lyrics_col_name = "lyrics") {
+  get_lyrics <- function(url) {
+    tryCatch({ #tryCatch safely handle issues with Scraping returning NA in such cases like a Network Error
+      webpage <- read_html(url) #Read HTML from URL
+      
+      # Extract lyrics from the page
+      # Inspect the HTML structure of songlyrics.com to get the right CSS selector
+      lyrics_node <- html_node(webpage, "#songLyricsDiv")
+      
+      # Get text and clean it up
+      lyrics <- html_text(lyrics_node)
+      lyrics <- trimws(lyrics)
+      return(lyrics)
+    }, error = function(e) {
+      return(NA)  # Return NA on failure
+    })
+  }
+  # Apply the scraping function to each URL
+  df[[lyrics_col_name]] <- sapply(df[[url_col]], get_lyrics)
+
+  return(df)
+}
+```
+
+## Webscrape Lyrics from Dataframe ('artist_songs_20_withURL') WARNING this takes a long time!!
+
+```{r}
+artist_songs_20_lyrics <- scrape_lyrics_from_urls(artist_songs20_withURL, "lyrics_url", lyrics_col_name = "lyrics")
+view(artist_songs_20_lyrics)
+```
+
