@@ -156,3 +156,37 @@ closeAllConnections()
 write.csv(artist_songs_20_lyrics, "LYRICS_Top_20_Songs_1958_2024.csv", row.names = FALSE)
 ```
 
+```{r}
+scrape_genre_new_urls <- function(df, url_col, genre_col_name = "genre") {
+  get_lyrics <- function(url) {
+    tryCatch({ #tryCatch safely handle issues with Scraping returning NA in such cases like a Network Error
+      webpage <- read_html(url) #Read HTML from URL
+      
+      # Inspect the HTML structure of songlyrics.com to get the right CSS selector
+      genre_node <- html_node(webpage, "p~ p+ p a")
+      
+      # Get text and clean it up
+      lyrics <- html_text(lyrics_node)
+      lyrics <- trimws(lyrics)
+      return(lyrics)
+    }, error = function(e) {
+      return(NA)  # Return NA on failure
+    })
+  }
+  # Apply the scraping function to each URL
+  df[[lyrics_col_name]] <- sapply(df[[url_col]], get_lyrics)
+
+  return(df)
+}
+```
+
+```{r}
+song_lyrics_20 <- read.csv("LYRICS_Top_20_Songs_1958_2024.csv")
+View(song_lyrics_20)
+```
+
+
+```{r}
+# genre_scrape_top20_lyrics <- filter(song_lyrics_20, 1967 >= year | year >= 1979)
+View(genre_scrape_top20_lyrics)
+```
