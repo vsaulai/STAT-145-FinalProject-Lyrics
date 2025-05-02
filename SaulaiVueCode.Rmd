@@ -31,7 +31,7 @@ library(stringr) #working with strings into tidyverse and cleaning text strings
 ```{r}
 artist_songs20 <- read.csv("Top_20_Songs_1958_2024.csv")
 artist_songs20$Title <- gsub("[\"']", "", artist_songs20$Title) #remove quotes from Title
-view(artist_songs20)
+View(artist_songs20)
 ``` 
 
 ## Function Split Multiple Songs('split_and_insert_row):
@@ -143,7 +143,16 @@ scrape_lyrics_from_urls <- function(df, url_col, lyrics_col_name = "lyrics") {
 ## Webscrape Lyrics from Dataframe ('artist_songs_20_withURL') WARNING this takes a long time!!
 
 ```{r}
-artist_songs_20_lyrics <- scrape_lyrics_from_urls(artist_songs20_withURL, "lyrics_url", lyrics_col_name = "lyrics")
+artist_songs_20_lyrics <- scrape_lyrics_from_urls(artist_songs20_withURL, "lyrics_url", lyrics_col_name = "lyrics") #Function takes a long time, makes sure you have a stable connection
 view(artist_songs_20_lyrics)
+
+```
+
+```{r}
+# Remember to close connections because you can exceed the connection limit of session and needs to be freed of memory
+closeAllConnections()
+
+#Write Web scrape data of lyrics to a CSV file
+write.csv(artist_songs_20_lyrics, "LYRICS_Top_20_Songs_1958_2024.csv", row.names = FALSE)
 ```
 
