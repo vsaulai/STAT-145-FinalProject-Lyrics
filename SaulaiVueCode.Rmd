@@ -188,5 +188,5 @@ View(song_lyrics_20)
 
 ```{r}
 # genre_scrape_top20_lyrics <- filter(song_lyrics_20, 1967 >= year | year >= 1979)
-View(genre_scrape_top20_lyrics)
+# View(genre_scrape_top20_lyrics)
 ```
