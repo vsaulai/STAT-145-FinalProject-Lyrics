@@ -28,7 +28,11 @@ missing_df_71_12_13 <- "https://raw.githubusercontent.com/vsaulai/STAT-345-Final
 View(missing_df_71_12_13)
 ```
 
-## Importing MAIN Data Frame from Github (will combine to this one)
+## Importing MAIN Data Frame from Github (will combine to this one eventually)
+- Problems with initial scraping
+  - Using escape characters to define string characters for the artist and song name caused a lot of problems
+  - Song collaborations caused a lot of problems when scraping on a legitimate lyrics site because the host website didn't accomadate artist features in a url, therefore we had to format out artist string names including "featurinh" "feat." "ft."
+  - Duplicate Songs by the same artist were recorded in the same song entry. Had to split this entry into another row
 
 ```{r}
 main_df_artist_lyrics <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/LYRICS_Top_20_Songs_1958_2024.csv" %>%
@@ -43,7 +47,9 @@ View(main_df_artist_lyrics)
 missing_df_71_12_13$Title <- gsub("[\"']", "", missing_df_71_12_13$Title) #remove quotes from Song Title
 ```
 
-## Function to Split and Insert Row
+## Function No.1: 'split_and_insert_row(data frame, "column_name")'
+  - There are two songs in song title that belong to the same artist and are placed in the same rankings
+  - This function splits this song and creates another song lyric entry
 
 ```{r}
 # Function to split a column by "/" and create new rows
@@ -83,21 +89,39 @@ missing_df_71_12_13 <- split_and_insert_row(missing_df_71_12_13, "Title")
 ```
 
 
-## Function Lyrics URL('generate_songlyrics_urls'):
-- Takes the artist name and song name from columns of data frame and generates a new url link for the song.
-- Only generates a vector. Will have to recombine with missing_dataframe before combining with the main_dataframe.
+## Function No.2: 'remove_featuring_from_artist(df, "artist_col")'
+- songlyrics.com doesn't play nice with artist features so we have to remove "featuring", "feat," and "ft."
+
+```{r}
+remove_featuring_from_artist <- function(df, artist_col) {
+  df[[artist_col]] <- gsub("\\s*(feat|featuring|ft)\\..*", "", df[[artist_col]], ignore.case = TRUE)
+  df[[artist_col]] <- trimws(df[[artist_col]])  # remove trailing whitespace
+  return(df)
+}
+```
+
+## Run Function No.2: removing feature
+
+```{r}
+missing_df_71_12_13 <- remove_featuring_from_artist(missing_df_71_12_13, artist_col = "Artist.s.")
+View(missing_df_71_12_13)
+```
+
+
+## Function No.3: generate_song_lyrics()
 
 ```{r}
 generate_songlyrics_urls <- function(df, artist_col, song_col, base_url_template) {
-  # Format for URL changing '-' and lowercase
+  # Format for URL: lowercase, strip special chars, replace spaces with hyphens
   format_for_url <- function(x) {
-    x <- tolower(x)                 # lowercase
+    x <- tolower(x)
+    x <- gsub("\\s*(feat(uring)?|ft)\\.?\\s.*", "", x, ignore.case = TRUE)  # remove "featuring", "feat", "ft"
     x <- gsub("[^a-z0-9 ]", "", x)  # remove special characters
     x <- gsub(" +", "-", x)         # replace spaces with hyphens
     return(x)
   }
   
-  # Extract base URL structure
+  # Extract base domain from URL template
   base_parts <- unlist(strsplit(base_url_template, "/"))
   base_domain <- paste(base_parts[1:3], collapse = "/")  # e.g. "https://www.songlyrics.com"
   
@@ -108,7 +132,7 @@ generate_songlyrics_urls <- function(df, artist_col, song_col, base_url_template
     paste0(base_domain, "/", artist_url, "/", song_url, "-lyrics/")
   }, df[[artist_col]], df[[song_col]])
   
-  # Return as data frame with column named "URL"
+  # Return as data frame with column named 'lyrics_url'
   return(data.frame(lyrics_url = urls, stringsAsFactors = FALSE))
 }
 ```
@@ -119,7 +143,6 @@ generate_songlyrics_urls <- function(df, artist_col, song_col, base_url_template
 ```{r}
 url_for_missing_df_71_12_13 <- generate_songlyrics_urls(missing_df_71_12_13, "Artist.s.", "Title", "https://www.songlyrics.com")
 
-View(url_for_missing_df_71_12_13)
 ```
 
 ## Combine with Missing_Dataframe
@@ -129,8 +152,6 @@ replacement_vector <- url_for_missing_df_71_12_13$lyrics_url
 
 # Check if the number of NAs matches the length of the replacement vector
 missing_df_71_12_13$lyrics_url[is.na(missing_df_71_12_13$lyrics_url)] <- replacement_vector
-
-View(missing_df_71_12_13)
 
 ```
 
@@ -165,5 +186,115 @@ scrape_lyrics_from_urls <- function(df, url_col, lyrics_col_name = "lyrics") {
 
 ```{r}
 missing_df_71_12_13 <- scrape_lyrics_from_urls(missing_df_71_12_13, "lyrics_url", lyrics_col_name = "lyrics")
+```
+
+## Merge 1971, 2012, 2013 to the main data frame
+- formatting out duplicate data and existing NA valued columns from same years
+
+```{r}
+final_df_artist_lyrics <- merge(main_df_artist_lyrics, missing_df_71_12_13, by = intersect(names(main_df_artist_lyrics), names(missing_df_71_12_13)), all = TRUE)
+final_df_artist_lyrics <- final_df_artist_lyrics[!is.na(final_df_artist_lyrics$Title), ]
+final_df_artist_lyrics <- final_df_artist_lyrics[order(final_df_artist_lyrics$Year, final_df_artist_lyrics$Rank), ] 
+final_df_artist_lyrics <- final_df_artist_lyrics[!is.na(final_df_artist_lyrics$Title), ]
+```
+
+
+## Function Genre Add
+```{r}
+scrape_genre_new_urls <- function(df, url_col, genre_col_name = "genre") {
+  get_genre <- function(url) {
+    tryCatch({
+      webpage <- read_html(url)
+      
+      # Extract the genre node; the selector may need to be adjusted based on the actual page
+      genre_node <- html_node(webpage, "p~ p+ p a")
+      
+      # Get text and clean it up
+      genre <- html_text(genre_node)
+      return(genre)
+    }, error = function(e) {
+      return(NA)
+    })
+  }
+  
+  # Apply the function to each URL
+  df[[genre_col_name]] <- sapply(df[[url_col]], get_genre)
+  
+  return(df)
+}
+
+```
+
+```{r}
+url <- final_df_artist_lyrics[["lyrics_url"]][1]
+webpage <- read_html(url)
+html_node(webpage, "p~ p+ p a") |> html_text()
+```
+
+
+## Run Genre Function
+```{r}
+genre_df_artist_lyrics <- scrape_genre_new_urls(final_df_artist_lyrics, "lyrics_url", genre_col_name = "genre")
+View(genre_df_artist_lyrics)
+```
+
+
+## Taking Out Failed Lyric Scrape Songs from Main Data Frame
+
+```{r}
+missing_df_lyrics <- final_df_artist_lyrics %>% 
+                     filter(is.na(final_df_artist_lyrics$lyrics))
+```
+
+## Deleting Old songlyrics URL 
+
+```{r}
+missing_df_lyrics <- remove_featuring_from_artist(missing_df_lyrics, "Artist.s.")
+missing_df_lyrics$lyrics_url <- NA
+```
+
+## Regenerating New songlyrics URL
+
+```{r}
+url_missing_df_lyrics <- generate_songlyrics_urls(missing_df_lyrics, "Artist.s.", "Title", "https://www.songlyrics.com")
+replacement_vector2 <- url_missing_df_lyrics$lyrics_url
+missing_df_lyrics$lyrics_url[is.na(missing_df_lyrics$lyrics_url)] <- replacement_vector2 #Combine the Replacement Vector back into the larger data frame
+```
+
+## Run Scrape Function Attempt for larger missing lyric songs
+
+```{r}
+scrp_miss_df_lyrics <- scrape_lyrics_from_urls(missing_df_lyrics, "lyrics_url", lyrics_col_name = "lyrics")
+View(scrp_miss_df_lyrics)
+```
+
+## Alternative Function: generate_azlyrics_url()
+  - changing from 'songlyrics.com' to 'azlyrics.com'
+
+```{r}
+generate_azlyrics_urls <- function(df, artist_col, song_col) {
+  # Format for AZLyrics URL: lowercase, remove features, remove special chars, no spaces
+  format_for_azlyrics <- function(x) {
+    x <- tolower(x)
+    x <- gsub("\\s*(feat(uring)?|ft)\\.?\\s.*", "", x, ignore.case = TRUE)  # remove featuring info
+    x <- gsub("[^a-z0-9]", "", x)  # remove all non-alphanumeric characters (no spaces, no hyphens)
+    return(x)
+  }
+  
+  base_url <- "https://www.azlyrics.com/lyrics"
+  
+  # Generate URLs
+  urls <- mapply(function(artist, song) {
+    artist_clean <- format_for_azlyrics(artist)
+    song_clean <- format_for_azlyrics(song)
+    paste0(base_url, "/", artist_clean, "/", song_clean, ".html")
+  }, df[[artist_col]], df[[song_col]])
+  
+  return(data.frame(lyrics_url = urls, stringsAsFactors = FALSE))
+}
+```
+
+```{r}
+closeAllConnections()
 ```
 
