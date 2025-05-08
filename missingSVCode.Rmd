@@ -215,43 +215,37 @@ missing_df_lyrics <- remove_featuring_from_artist(missing_df_lyrics, "Artist.s."
 missing_df_lyrics$lyrics_url <- NA
 ```
 
-## Alternative Function: generate_azlyrics_url()
-  - changing from 'songlyrics.com' to 'azlyrics.com'
+## Remove Featuring from artist
 
 ```{r}
-generate_azlyrics_urls <- function(df, artist_col, song_col) {
-  # Format for AZLyrics URL: lowercase, remove features, remove special chars, no spaces
-  format_for_azlyrics <- function(x) {
-    x <- tolower(x)
-    x <- gsub("\\s*(feat(uring)?|ft)\\.?\\s.*", "", x, ignore.case = TRUE)  # remove featuring info
-    x <- gsub("[^a-z0-9]", "", x)  # remove all non-alphanumeric characters (no spaces, no hyphens)
-    return(x)
-  }
-  
-  base_url <- "https://www.azlyrics.com/lyrics"
-  
-  # Generate URLs
-  urls <- mapply(function(artist, song) {
-    artist_clean <- format_for_azlyrics(artist)
-    song_clean <- format_for_azlyrics(song)
-    paste0(base_url, "/", artist_clean, "/", song_clean, ".html")
-  }, df[[artist_col]], df[[song_col]])
-  
-  return(data.frame(lyrics_url = urls, stringsAsFactors = FALSE))
+remove_featuring <- function(df, column) {
+  df[[column]] <- sub("(?i)\\s*featuring.*$", "", df[[column]])
+  return(df)
 }
 ```
 
+## Run Function for Featuring
+
 ```{r}
-gen_miss_df_lyrics <- generate_azlyrics_urls(missing_df_lyrics, "Artist.s.", "Title")
+missing_format_df_lyrics <- remove_featuring(missing_df_lyrics, "Artist.s.")
+print(missing_format_df_lyrics$Artist.s.)
+```
+
+## Regenerate Lyrics for this column
+
+```{r}
+missing_format_df_lyrics <- generate_songlyrics_urls(missing_df_lyrics, "Artist.s.", "Title", "https://www.songlyrics.com")
+
+replacement_vector3 <- missing_format_df_lyrics$lyrics_url #replacement vector to be moved
+
+missing_df_lyrics$lyrics_url[is.na(missing_df_lyrics$lyrics_url)] <- replacement_vector3  #combining data frames back into  line 214 df.
 ```
 
 ```{r}
-replacement_vector3 <- gen_miss_df_lyrics$lyrics_url 
-
-# Check if the number of NAs matches the length of the replacement vector
-missing_df_lyrics$lyrics_url[is.na(missing_df_lyrics$lyrics_url)] <- replacement_vector3
 
 ```
+
+
 
 ```{r}
 scrape_azlyrics_from_df <- function(df, url_col, lyrics_col_name = "lyrics") {
@@ -301,8 +295,6 @@ View(gen_missing_df_lyrics)
 write.csv(final_df_artist_lyrics, "ScrapedLyrics_AlmostFinish.csv", row.names = FALSE)
 ```
 
-
 ```{r}
 closeAllConnections()
 ```
-
