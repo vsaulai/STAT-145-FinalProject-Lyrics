@@ -18,6 +18,8 @@ library(tidyr)
 library(rvest) #web scraping package and working with html
 library(stringr) #working with strings into tidyverse and cleaning text strings
 library(readr)
+library(httr)
+conflict_prefer("filter", "dplyr")
 ```
 
 ## Importing from Github MISSING 1971, 2012, 2013 missing top 20 artists and songs
@@ -199,46 +201,6 @@ final_df_artist_lyrics <- final_df_artist_lyrics[!is.na(final_df_artist_lyrics$T
 ```
 
 
-## Function Genre Add
-```{r}
-scrape_genre_new_urls <- function(df, url_col, genre_col_name = "genre") {
-  get_genre <- function(url) {
-    tryCatch({
-      webpage <- read_html(url)
-      
-      # Extract the genre node; the selector may need to be adjusted based on the actual page
-      genre_node <- html_node(webpage, "p~ p+ p a")
-      
-      # Get text and clean it up
-      genre <- html_text(genre_node)
-      return(genre)
-    }, error = function(e) {
-      return(NA)
-    })
-  }
-  
-  # Apply the function to each URL
-  df[[genre_col_name]] <- sapply(df[[url_col]], get_genre)
-  
-  return(df)
-}
-
-```
-
-```{r}
-url <- final_df_artist_lyrics[["lyrics_url"]][1]
-webpage <- read_html(url)
-html_node(webpage, "p~ p+ p a") |> html_text()
-```
-
-
-## Run Genre Function
-```{r}
-genre_df_artist_lyrics <- scrape_genre_new_urls(final_df_artist_lyrics, "lyrics_url", genre_col_name = "genre")
-View(genre_df_artist_lyrics)
-```
-
-
 ## Taking Out Failed Lyric Scrape Songs from Main Data Frame
 
 ```{r}
@@ -251,21 +213,6 @@ missing_df_lyrics <- final_df_artist_lyrics %>%
 ```{r}
 missing_df_lyrics <- remove_featuring_from_artist(missing_df_lyrics, "Artist.s.")
 missing_df_lyrics$lyrics_url <- NA
-```
-
-## Regenerating New songlyrics URL
-
-```{r}
-url_missing_df_lyrics <- generate_songlyrics_urls(missing_df_lyrics, "Artist.s.", "Title", "https://www.songlyrics.com")
-replacement_vector2 <- url_missing_df_lyrics$lyrics_url
-missing_df_lyrics$lyrics_url[is.na(missing_df_lyrics$lyrics_url)] <- replacement_vector2 #Combine the Replacement Vector back into the larger data frame
-```
-
-## Run Scrape Function Attempt for larger missing lyric songs
-
-```{r}
-scrp_miss_df_lyrics <- scrape_lyrics_from_urls(missing_df_lyrics, "lyrics_url", lyrics_col_name = "lyrics")
-View(scrp_miss_df_lyrics)
 ```
 
 ## Alternative Function: generate_azlyrics_url()
@@ -293,6 +240,67 @@ generate_azlyrics_urls <- function(df, artist_col, song_col) {
   return(data.frame(lyrics_url = urls, stringsAsFactors = FALSE))
 }
 ```
+
+```{r}
+gen_miss_df_lyrics <- generate_azlyrics_urls(missing_df_lyrics, "Artist.s.", "Title")
+```
+
+```{r}
+replacement_vector3 <- gen_miss_df_lyrics$lyrics_url 
+
+# Check if the number of NAs matches the length of the replacement vector
+missing_df_lyrics$lyrics_url[is.na(missing_df_lyrics$lyrics_url)] <- replacement_vector3
+
+```
+
+```{r}
+scrape_azlyrics_from_df <- function(df, url_col, lyrics_col_name = "lyrics") {
+  
+  # Inner function to scrape a single URL
+  scrape_lyrics <- function(url) {
+    tryCatch({
+      page <- read_html(GET(url, add_headers("User-Agent" = "Mozilla/5.0")))
+      divs <- html_nodes(page, "div")
+      main_col_index <- grep("class=\"col-xs-12 col-lg-8 text-center\"", as.character(divs))
+      
+      if (length(main_col_index) == 0) {
+        message(sprintf("Could not locate main lyrics section for: %s", url))
+        return(NA)
+      }
+      
+      lyrics_index <- main_col_index + 6
+      if (lyrics_index > length(divs)) {
+        message(sprintf("Expected lyrics node not found at offset index for: %s", url))
+        return(NA)
+      }
+      
+      lyrics_text <- html_text(divs[[lyrics_index]])
+      lyrics_text <- gsub("\r", "", lyrics_text)
+      lyrics_text <- gsub("\n{2,}", "\n\n", lyrics_text)
+      lyrics_text <- trimws(lyrics_text)
+      return(lyrics_text)
+    }, error = function(e) {
+      message(sprintf("Scraping failed for: %s — %s", url, e$message))
+      return(NA)
+    })
+  }
+  
+  # Apply the scraper to each URL in the specified column
+  df[[lyrics_col_name]] <- sapply(df[[url_col]], scrape_lyrics)
+  
+  return(df)
+}
+```
+
+```{r}
+gen_missing_df_lyrics <- scrape_azlyrics_from_df(missing_df_lyrics, "lyrics_url", lyrics_col_name = "lyrics")
+View(gen_missing_df_lyrics)
+```
+
+```{r}
+write.csv(final_df_artist_lyrics, "ScrapedLyrics_AlmostFinish.csv", row.names = FALSE)
+```
+
 
 ```{r}
 closeAllConnections()
