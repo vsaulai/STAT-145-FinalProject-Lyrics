@@ -53,18 +53,23 @@ download.file(url, destfile = "scrape_lyrics_files2.Rmd", mode = "wb")
 file.edit("scrape_lyrics_files2.Rmd")
 ```
 
+## Importing Main Data Frame
+
+```{r}
+lyrics_final_df_url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/final_lyrics_df.csv"
+lyrics_df <- read.csv(lyrics_final_df)
+head(lyrics_df)
+```
 
 4. Create two measures of song repetitiveness. Write a function (or two) to measure song repetitiveness, and apply it to each of the songs from part 1. Suggestions for "repetitiveness" include (but are definitely not limited to): "Do songs repeat the same phrase frequently?" and "Do songs repeat their song title frequently"
 
-
-#Function
 ```{r}
-# search URL (either by artist name, song name, etc.)
 
-# read lyrics page from html
 
-# extract lyrics
 ```
+
+##
+
 
 5. Have songs become more repetitive over time? Summarize and visualize your repetitive measures from part 4. 
 
