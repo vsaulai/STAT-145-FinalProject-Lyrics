@@ -283,5 +283,5 @@ lyrics_data <- lyrics_data %>%
 
 ```{r}
 # Save updated dataset
-write.csv(lyrics_data, "main_lyrics_df.csv", row.names = FALSE)
+write.csv(lyrics_data, "main_lyrics_df", row.names = FALSE)
 ```
