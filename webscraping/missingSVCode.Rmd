@@ -241,6 +241,7 @@ replacement_vector3 <- missing_format_df_lyrics$lyrics_url #replacement vector t
 missing_df_lyrics$lyrics_url[is.na(missing_df_lyrics$lyrics_url)] <- replacement_vector3  #combining data frames back into  line 214 df.
 ```
 
+## Attempting AZlyrics
 
 ```{r}
 scrape_azlyrics_from_df <- function(df, url_col, lyrics_col_name = "lyrics") {
