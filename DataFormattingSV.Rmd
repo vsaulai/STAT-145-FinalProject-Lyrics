@@ -1,0 +1,136 @@
+---
+title: "DataFormat Code"
+author: "Saulai Vue"
+date: "2025-05-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(stringr)
+library(conflicted)
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+library(rvest) #web scraping package and working with html
+library(stringr) #working with strings into tidyverse and cleaning text strings
+library(readr)
+library(httr)
+```
+
+
+```{r}
+scraped_lyrics_df <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/ScrapedLyrics_AlmostFinish.csv" %>%
+                      read.csv()
+View(scraped_lyrics_df)
+```
+
+## Scrape Test
+
+```{r}
+test_url <- "https://www.songlyrics.com/sly-the-family-stone/hot-fun-in-the-summertime-lyrics/"
+webpage_test <- read_html(test_url)
+genrescrapetest <- webpage_test %>% 
+  html_nodes("p~ p+ p a") %>% 
+  html_text()
+print(webpage_test)
+```
+
+```{r}
+repetitive_data <- read_csv("C:\\Users\\Saulai\\Documents\\UWL\\Spring 2025\\STAT 345\\Projects\\gitrepository\\STAT-345-FinalProject-Lyrics\\LYRICS_Top_20_Songs_Repetition.csv")
+View(repetitive_data)
+```
+
+## Function to Remove Indents, Spaces, and Lines
+
+```{r}
+remove_newlines <- function(df, column_name) {
+  df[[column_name]] <- gsub("[\r\n\t]", " ", df[[column_name]])      # Replace newlines, tabs
+  df[[column_name]] <- gsub(" +", " ", df[[column_name]])            # Collapse multiple spaces
+  df[[column_name]] <- trimws(df[[column_name]])                     # Trim leading/trailing spaces
+  return(df)
+}
+```
+
+## Count number of words
+
+```{r}
+count_words_column <- function(df, column_name) {
+  # Handle NA safely and count words using strsplit
+  word_counts <- sapply(df[[column_name]], function(text) {
+    if (is.na(text) || text == "") return(0)
+    length(unlist(strsplit(trimws(text), "\\s+")))
+  })
+  
+  return(word_counts)
+}
+```
+
+## Run Previous Functions
+
+```{r}
+
+```
+
+
+## Paste Back into Data Frame
+
+```{r}
+
+```
+
+## Udpipe Language Model
+
+```{r}
+model <- udpipe_download_model(language = "english")
+ud_model <- udpipe_load_model(model$file_model)
+```
+
+## Function to Count word type
+
+```{r}
+count_pos_types <- function(df, column_name, ud_model) {
+  # Store results in a list
+  pos_counts_list <- lapply(df[[column_name]], function(text) {
+    if (is.na(text) || trimws(text) == "") return(data.frame())
+    
+    # Annotate the text
+    annotation <- udpipe_annotate(ud_model, x = text)
+    anno_df <- as.data.frame(annotation)
+    
+    # Count POS tags
+    table(anno_df$upos)
+  })
+  
+  # Convert to a tidy data frame
+  pos_summary <- do.call(rbind, lapply(seq_along(pos_counts_list), function(i) {
+    row <- as.data.frame(as.table(pos_counts_list[[i]]))
+    if (nrow(row) == 0) return(data.frame(id = i))
+    row$id <- i
+    return(row)
+  }))
+  
+  # Reshape to wide format: one row per observation, POS tags as columns
+  library(tidyr)
+  pos_wide <- pivot_wider(pos_summary, names_from = Var1, values_from = Freq, values_fill = 0)
+  
+  # Join with original data frame (by row index)
+  df$id_tmp <- seq_len(nrow(df))
+  result <- merge(df, pos_wide, by.x = "id_tmp", by.y = "id", all.x = TRUE)
+  result$id_tmp <- NULL
+  
+  return(result)
+}
+```
+
+
+
+```{r}
+ #final_df_artist_test <- remove_newlines(final_df_artist_lyrics, column_name = "lyrics")
+View(final_df_artist_test)
+```
+
