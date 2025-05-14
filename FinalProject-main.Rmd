@@ -10,29 +10,48 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 #Packages
-```{r}
-install.packages("tidytext")
-install.packages("rvest")
-# install.packages("httr")
-install.packages("stringr")
 
+```{r}
+library(dplyr)
+library(tidyr)
 library(tidyverse)
 library(rvest) #web scraping package and working with html
 library(tidytext) #converts text into tidy format, and text mining
-#library(httr)    #sends http requests and working with web API
+library(httr)    #sends http requests and working with web API
 library(stringr) #working with strings into tidyverse and cleaning text strings
+library(readr)
 ```
-
 
 1. Your first task is to create a list of top songs, dating back to 1958 (when Billboard introduced it's Hot 100 yearly chart). You may want to start with just the yearly top song, but your work should be general enough to account for multiple songs per year. You may narrow your search to a particular genre if you like. You may use any website that provides this information, though you may try to find one that makes part 2 as simple as possible.
 git 
 
-Test
-
 2. For the top songs in part 1, gather some basic information: artist, title, year, genre (if appropriate), length, and other variables you think might be informative (sales figures, etc.).
 
-
 3. Find a lyric hosting service (such as www.azlyrics.com or www.songlyrics.com, though these aren't the only options) that provides full lyrics to songs. Ideally, the URLs for these songs follow a reproducible pattern. Write a function that can automatically capture these song lyrics for your top songs from part 1, and then gather the lyrics. Do your best to keep this function general, but you may need to write code for specific instances.
+
+## Data Formatting Steps
+- Imported Top 20 Billboard Songs + Artist's of each year between 1958-2024.
+    - Webscraped from url, "https://en.wikipedia.org/wiki/Billboard_year-end_top_50_singles_of_1958" to 2024. 
+        - From file code (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/JakeChristiansenCode.Rmd)
+        
+```{r setup, echo=FALSE, include=FALSE}
+url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/JakeChristiansenCode.Rmd"
+download.file(url, destfile = "wiki_scrape_songlist.Rmd", mode = "wb")
+file.edit("wiki_scrape_songlist.Rmd")
+```
+
+- Webscraped Lyrics with Selector Gadget 'songlyrics.com' (Some lyrics failed to scrape because the host website 'songlyrics.com' did not have the lyrics at all)
+    - Webscraped from 'songlyrics.com' by generating the artist and song url from the website directory.
+        - From file code (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/SaulaiVueCode.Rmd) AND (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/missingSVCode.Rmd)
+        
+```{r setup, echo=FALSE, include=FALSE}
+url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/SaulaiVueCode.Rmd"
+download.file(url, destfile = "scrape_lyrics_files.Rmd", mode = "wb")
+file.edit("scrape_lyrics_files.Rmd")
+url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/missingSVCode.Rmd"
+download.file(url, destfile = "scrape_lyrics_files2.Rmd", mode = "wb")
+file.edit("scrape_lyrics_files2.Rmd")
+```
 
 
 4. Create two measures of song repetitiveness. Write a function (or two) to measure song repetitiveness, and apply it to each of the songs from part 1. Suggestions for "repetitiveness" include (but are definitely not limited to): "Do songs repeat the same phrase frequently?" and "Do songs repeat their song title frequently"
