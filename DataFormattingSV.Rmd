@@ -24,8 +24,8 @@ library(httr)
 
 
 ```{r}
-scraped_lyrics_df <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/ScrapedLyrics_AlmostFinish.csv" %>%
-                      read.csv()
+scraped_lyrics_url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/Lyrics_updated_repeatcount.csv"
+scraped_lyrics_df <- read.csv(scraped_lyrics_url)
 View(scraped_lyrics_df)
 ```
 
@@ -41,47 +41,95 @@ print(webpage_test)
 ```
 
 ```{r}
-repetitive_data <- read_csv("C:\\Users\\Saulai\\Documents\\UWL\\Spring 2025\\STAT 345\\Projects\\gitrepository\\STAT-345-FinalProject-Lyrics\\LYRICS_Top_20_Songs_Repetition.csv")
-View(repetitive_data)
+# repetitive_data <- read_csv("C:\\Users\\Saulai\\Documents\\UWL\\Spring 2025\\STAT 345\\Projects\\gitrepository\\STAT-345-FinalProject-Lyrics\\LYRICS_Top_20_Songs_Repetition.csv")
+# View(repetitive_data)
 ```
 
-## Function to Remove Indents, Spaces, and Lines
+## Function to Remove Punctuation, "[Instrumental]", and Invalid entries
 
 ```{r}
-remove_newlines <- function(df, column_name) {
-  df[[column_name]] <- gsub("[\r\n\t]", " ", df[[column_name]])      # Replace newlines, tabs
-  df[[column_name]] <- gsub(" +", " ", df[[column_name]])            # Collapse multiple spaces
-  df[[column_name]] <- trimws(df[[column_name]])                     # Trim leading/trailing spaces
-  return(df)
+remove_brackets_clean_text <- function(data, column_name) {
+  if (!column_name %in% names(data)) {
+    stop("The specified column does not exist in the data frame.")
+  }
+
+  # Fix encoding issues
+  data[[column_name]] <- iconv(data[[column_name]], to = "UTF-8", sub = "byte")
+
+  # Replace values that start with "We do not have the lyrics" (case-insensitive) with NA
+  data[[column_name]][grepl("^we do not have the lyrics", data[[column_name]], ignore.case = TRUE)] <- NA
+
+  # Remove content in brackets (), [], {}
+  data[[column_name]] <- gsub("\\[[^\\]]*\\]|\\([^\\)]*\\)|\\{[^\\}]*\\}", "", data[[column_name]])
+
+  # Remove specific words like "Instrumental" (case-insensitive)
+  data[[column_name]] <- gsub("\\bInstrumental\\b", "", data[[column_name]], ignore.case = TRUE)
+
+  # Remove punctuation except apostrophes
+  data[[column_name]] <- gsub("[^[:alnum:] [:space:]']", "", data[[column_name]])
+
+  # Trim extra white space
+  data[[column_name]] <- trimws(data[[column_name]])
+
+  return(data)
 }
+
 ```
 
-## Count number of words
+## Count number of words column
 
 ```{r}
-count_words_column <- function(df, column_name) {
-  # Handle NA safely and count words using strsplit
-  word_counts <- sapply(df[[column_name]], function(text) {
-    if (is.na(text) || text == "") return(0)
-    length(unlist(strsplit(trimws(text), "\\s+")))
+add_word_count_column <- function(data, column_name, new_column_name = "word_count") {
+  if (!column_name %in% names(data)) {
+    stop("The specified column does not exist in the data frame.")
+  }
+
+  # Handle NA safely, count words using strsplit
+  word_counts <- sapply(data[[column_name]], function(x) {
+    if (is.na(x) || trimws(x) == "") {
+      return(0)
+    } else {
+      return(length(strsplit(trimws(x), "\\s+")[[1]]))
+    }
   })
-  
-  return(word_counts)
+
+  # Add the new word count column
+  data[[new_column_name]] <- word_counts
+
+  return(data)
 }
+
 ```
 
 ## Run Previous Functions
 
 ```{r}
-
+scraped_lyrics_cleaning1 <- remove_brackets_clean_text(scraped_lyrics_df, "lyrics")
+View(scraped_lyrics_cleaning1)
 ```
-
-
-## Paste Back into Data Frame
 
 ```{r}
-
+cleaning_url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/cleaning_lyrics.csv"
+cleaning_df <- read.csv(cleaning_url)
+View(cleaning_df)
 ```
+
+```{r}
+counting_lyrics <- add_word_count_column(cleaning_df, "lyrics")
+View(counting_lyrics)
+```
+
+
+```{r}
+lyrics_df <- counting_lyrics
+```
+
+## Installing Udpipe
+```{r}
+install.packages("udpipe")
+library(udpipe)
+```
+
 
 ## Udpipe Language Model
 
@@ -107,15 +155,18 @@ count_pos_types <- function(df, column_name, ud_model) {
   })
   
   # Convert to a tidy data frame
-  pos_summary <- do.call(rbind, lapply(seq_along(pos_counts_list), function(i) {
-    row <- as.data.frame(as.table(pos_counts_list[[i]]))
-    if (nrow(row) == 0) return(data.frame(id = i))
+pos_summary <- do.call(rbind, lapply(seq_along(pos_counts_list), function(i) {
+  pos_counts <- pos_counts_list[[i]]
+  
+  if (!is.null(pos_counts) && length(pos_counts) > 0) {
+    row <- as.data.frame(as.table(pos_counts))
     row$id <- i
     return(row)
-  }))
-  
-  # Reshape to wide format: one row per observation, POS tags as columns
-  library(tidyr)
+  } else {
+    return(data.frame(Var1 = NA, Freq = NA, id = i))
+  }
+}))
+  # Reshape to wide format: one row per observation, POS tags as columns+
   pos_wide <- pivot_wider(pos_summary, names_from = Var1, values_from = Freq, values_fill = 0)
   
   # Join with original data frame (by row index)
@@ -127,10 +178,110 @@ count_pos_types <- function(df, column_name, ud_model) {
 }
 ```
 
+```{r}
+result_types <- count_pos_types(lyrics_df, "lyrics", ud_model)
+View(result_types)
+```
+
+## Renaming POS tags from english UDMODEL
+    noun = NOUN,
+    verb = VERB,
+    adjective  = ADJ,
+    adposition = ADP,
+    adverb  = ADV,
+    proper_noun = PROPN,
+    interjection = INTJ,
+    numeral = NUM,
+    particle = PART,
+    pronoun = PRON,
+    subordinating_conj = SCONJ,
+    coordinating_conj = CCONJ,
+    determiner = DET,
+    punctuation = PUNCT,
+    symbol = SYM,
+    other = X,
+
+```{r}
+main_lyrics_df <- result_types %>%
+  rename(
+    noun = NOUN,
+    verb = VERB,
+    adjective  = ADJ,
+    adposition = ADP,
+    adverb  = ADV,
+    proper_noun = PROPN,
+    interjection = INTJ,
+    numeral = NUM,
+    particle = PART,
+    pronoun = PRON,
+    subordinating_conj = SCONJ,
+    coordinating_conj = CCONJ,
+    determiner = DET,
+    punctuation = PUNCT,
+    symbol = SYM,
+    other = X,
+  )
+View(main_lyrics_df)
+```
+
+
+## Code to recount title name frequency
+- Function 1: Measure phrase repetition
+
+```{r}
+# Function 1: Measure phrase repetition
+measure_phrase_repetition <- function(lyrics, phrase_length = 2) {
+  words <- unlist(str_split(tolower(lyrics), "\\s+"))  # Split lyrics into words
+  
+  # Create phrase sequences
+  phrases <- sapply(1:(length(words) - (phrase_length - 1)), function(i) {
+    paste(words[i:(i + phrase_length - 1)], collapse = " ")
+  })
+  
+  phrase_counts <- table(phrases)  # Count occurrences
+  sorted_phrases <- sort(phrase_counts, decreasing = TRUE)  # Sort by frequency
+  
+  return(names(head(sorted_phrases, 10)))  # Return top 10 repeated phrases
+}
+```
+
+## Function 2: Measure title repetition
+
+```{r}
+# Function 2: Measure title repetition
+measure_title_repetition <- function(title, lyrics) {
+  if (is.na(lyrics) || is.na(title) || str_trim(lyrics) == "") return(NA_integer_)
+  
+  # Try converting to lowercase safely
+  title_clean <- tryCatch(tolower(title), error = function(e) return(NA_character_))
+  lyrics_clean <- tryCatch(tolower(lyrics), error = function(e) return(NA_character_))
+  
+  if (is.na(title_clean) || is.na(lyrics_clean)) return(NA_integer_)
+  
+  title_count <- str_count(lyrics_clean, fixed(title_clean))
+  return(title_count)
+}
+```
+
+```{r}
+# Load dataset
+lyrics_data <- main_lyrics_df
+```
+
+```{r}
+# Apply repetitiveness measures
+lyrics_data <- lyrics_data %>%
+  rowwise() %>%
+  mutate(
+    phrase_repetition = paste(measure_phrase_repetition(lyrics), collapse = "; "),
+    title_repetition_count = measure_title_repetition(Title, lyrics)
+  ) %>%
+  ungroup()
+```
+
 
 
 ```{r}
- #final_df_artist_test <- remove_newlines(final_df_artist_lyrics, column_name = "lyrics")
-View(final_df_artist_test)
+# Save updated dataset
+write.csv(lyrics_data, "main_lyrics_df.csv", row.names = FALSE)
 ```
-
