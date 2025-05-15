@@ -22,28 +22,12 @@ library(readr)
 library(httr)
 ```
 
-
 ```{r}
 scraped_lyrics_url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/Lyrics_updated_repeatcount.csv"
 scraped_lyrics_df <- read.csv(scraped_lyrics_url)
 View(scraped_lyrics_df)
 ```
 
-## Scrape Test
-
-```{r}
-test_url <- "https://www.songlyrics.com/sly-the-family-stone/hot-fun-in-the-summertime-lyrics/"
-webpage_test <- read_html(test_url)
-genrescrapetest <- webpage_test %>% 
-  html_nodes("p~ p+ p a") %>% 
-  html_text()
-print(webpage_test)
-```
-
-```{r}
-# repetitive_data <- read_csv("C:\\Users\\Saulai\\Documents\\UWL\\Spring 2025\\STAT 345\\Projects\\gitrepository\\STAT-345-FinalProject-Lyrics\\LYRICS_Top_20_Songs_Repetition.csv")
-# View(repetitive_data)
-```
 
 ## Function to Remove Punctuation, "[Instrumental]", and Invalid entries
 
@@ -279,9 +263,15 @@ lyrics_data <- lyrics_data %>%
   ungroup()
 ```
 
+```{r}
+write.csv(lyrics_data, "final_lyrics_df.csv", row.names = FALSE)
+```
 
+## Main Data frame Created on Github
 
 ```{r}
-# Save updated dataset
-write.csv(lyrics_data, "main_lyrics_df", row.names = FALSE)
+lyrics_final_df <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/final_lyrics_df.csv"
+lyrics_df <- read.csv(lyrics_final_df)
+View(lyrics_df)
 ```
+

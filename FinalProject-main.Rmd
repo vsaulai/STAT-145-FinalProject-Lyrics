@@ -9,9 +9,9 @@ output: word_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-#Packages
+## Lyrics Final Project
 
-```{r}
+```{r setup, include=FALSE}
 library(dplyr)
 library(tidyr)
 library(tidyverse)
@@ -22,59 +22,334 @@ library(stringr) #working with strings into tidyverse and cleaning text strings
 library(readr)
 ```
 
-1. Your first task is to create a list of top songs, dating back to 1958 (when Billboard introduced it's Hot 100 yearly chart). You may want to start with just the yearly top song, but your work should be general enough to account for multiple songs per year. You may narrow your search to a particular genre if you like. You may use any website that provides this information, though you may try to find one that makes part 2 as simple as possible.
-git 
+## Main Data Frame
 
-2. For the top songs in part 1, gather some basic information: artist, title, year, genre (if appropriate), length, and other variables you think might be informative (sales figures, etc.).
-
-3. Find a lyric hosting service (such as www.azlyrics.com or www.songlyrics.com, though these aren't the only options) that provides full lyrics to songs. Ideally, the URLs for these songs follow a reproducible pattern. Write a function that can automatically capture these song lyrics for your top songs from part 1, and then gather the lyrics. Do your best to keep this function general, but you may need to write code for specific instances.
-
-## Data Formatting Steps
-- Imported Top 20 Billboard Songs + Artist's of each year between 1958-2024.
-    - Webscraped from url, "https://en.wikipedia.org/wiki/Billboard_year-end_top_50_singles_of_1958" to 2024. 
-        - From file code (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/JakeChristiansenCode.Rmd)
-        
-```{r setup, echo=FALSE, include=FALSE}
-url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/JakeChristiansenCode.Rmd"
-download.file(url, destfile = "wiki_scrape_songlist.Rmd", mode = "wb")
-file.edit("wiki_scrape_songlist.Rmd")
-```
-
-- Webscraped Lyrics with Selector Gadget 'songlyrics.com' (Some lyrics failed to scrape because the host website 'songlyrics.com' did not have the lyrics at all)
-    - Webscraped from 'songlyrics.com' by generating the artist and song url from the website directory.
-        - From file code (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/SaulaiVueCode.Rmd) AND (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/missingSVCode.Rmd)
-        
-```{r setup, echo=FALSE, include=FALSE}
-url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/SaulaiVueCode.Rmd"
-download.file(url, destfile = "scrape_lyrics_files.Rmd", mode = "wb")
-file.edit("scrape_lyrics_files.Rmd")
-url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/missingSVCode.Rmd"
-download.file(url, destfile = "scrape_lyrics_files2.Rmd", mode = "wb")
-file.edit("scrape_lyrics_files2.Rmd")
-```
-
-## Importing Main Data Frame
-
-```{r}
+```{r, echo=FALSE}
 lyrics_final_df_url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/final_lyrics_df.csv"
 lyrics_df <- read.csv(lyrics_final_df)
 head(lyrics_df)
 ```
 
-4. Create two measures of song repetitiveness. Write a function (or two) to measure song repetitiveness, and apply it to each of the songs from part 1. Suggestions for "repetitiveness" include (but are definitely not limited to): "Do songs repeat the same phrase frequently?" and "Do songs repeat their song title frequently"
+## Webscraping
+
+Part 1: Your first task is to create a list of top songs, dating back to 1958 (when Billboard introduced it's Hot 100 yearly chart). You may want to start with just the yearly top song, but your work should be general enough to account for multiple songs per year. You may narrow your search to a particular genre if you like. You may use any website that provides this information, though you may try to find one that makes part 2 as simple as possible.
+git 
+
+Initially, we scraped from 1958-2024 for all Top 20 Billboard Songs from wikipedia. This function generated our list of songs and artist in our data frame.
+
+- This function, along with a set of code is listed below along with code to download the markdown file where it originated from.
+
+```{r, echo=FALSE, include=FALSE}
+#Scrape the 1958 Top 20 Songs
+scrape_1958_top_20 <- function() {
+  # URL for 1958 data
+  url <- "https://en.wikipedia.org/wiki/Billboard_year-end_top_50_singles_of_1958"
+  # Read the page
+  page <- read_html(url)
+  # Extract the tables and select the first one
+  tables <- html_nodes(page, "table")
+  table_of_interest <- html_table(tables[[1]], fill = TRUE)
+  # Extract the top 20 rows and add "Year" and "Rank" columns
+  top_20_songs <- tibble(table_of_interest[1:20, ], Year = 1958, Rank = 1:20)
+  return(top_20_songs)
+}
+
+#Scrape 1959–2024 Top 20 Songs
+scrape_top_20_songs <- function(year) {
+  # Construct the URL dynamically
+  url <- paste0("https://en.wikipedia.org/wiki/Billboard_Year-End_Hot_100_singles_of_", year)
+  # Try to read the page with error handling
+  page <- tryCatch(read_html(url), error = function(e) NULL)
+  on.exit(rm(page), add = TRUE)  # Clean up memory
+  gc()
+  # Check if the page is accessible
+  if (is.null(page)) {
+    message(paste("Could not retrieve data for year:", year))
+    write(paste("Failed to retrieve:", year), file = "failed_urls.txt", append = TRUE)
+    return(NULL)
+  }
+  # Extract tables and select the first one
+  tables <- html_nodes(page, "table")
+  if (length(tables) < 1) {
+    message(paste("No table found for year:", year))
+    write(paste("No table found:", year), file = "failed_urls.txt", append = TRUE)
+    return(NULL)
+  }
+  table_of_interest <- html_table(tables[[1]], fill = TRUE)
+  # Extract the top 20 rows and add "Year" and "Rank" columns
+  top_20_songs <- tibble(table_of_interest[1:20, ], Year = year, Rank = 1:20)
+  return(top_20_songs)
+}
+
+#Scrape the 1958 data
+message("Scraping data for 1958...")
+data_1958 <- scrape_1958_top_20()
+
+#Scrape the 1959–2024 data
+years <- 1959:2024  # Define the range of years
+all_years_data <- list()  # Initialize list to store yearly data
+
+for (year in years) {
+  message(paste("Scraping data for year:", year))
+  year_data <- scrape_top_20_songs(year)
+  if (!is.null(year_data)) {
+    all_years_data[[as.character(year)]] <- year_data
+  }
+}
+# Combine data from all years (1959–2024)
+data_1959_2024 <- bind_rows(all_years_data)
+#Combine the 1958 and 1959–2024 datasets
+combined_data <- bind_rows(data_1958, data_1959_2024)
+#Retain Only Relevant Columns
+cleaned_data <- combined_data %>%
+  select(Title, `Artist(s)`, Year, Rank)
+#Save the Cleaned Data to a CSV File
+write.csv(cleaned_data, "Top_20_Songs_1958_2024.csv", row.names = FALSE)
+```
+
+## Extra File Generating Artist and Song Names
+  - From Github file code (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/JakeChristiansenCode.Rmd) and Download Code Below
+  - Note: Some markdown files were created by different group members and worked at different times while working on the group project. We also reorganized github files so it may not work because we either moved the file or deleted it from the repository. Files may not be integrated seemlessly together.
+        
+```{r, echo=FALSE, include=FALSE}
+url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/JakeChristiansenCode.Rmd"
+download.file(url, destfile = "wiki_scrape_songlist.Rmd", mode = "wb")
+file.edit("wiki_scrape_songlist.Rmd")
+```
+
+
+Part 2: For the top songs in part 1, gather some basic information: artist, title, year, genre (if appropriate), length, and other variables you think might be informative (sales figures, etc.).
+While webscraping we wanted genres to be incorporated with our data frame. However, finding a site that can freely give us the genre type of a song was challenging so we abandoned this idea. Next
+
+We initially wanted a genre incorporated in our data set but it was beyond our ability. While attempting to scrape for genres, it did not work and had problems in the CSS selector or website host.
+Therefore, we just settled on: artist, song title, year, and rank of song. Eventually, we added other information like: common phrases repeated, number of times the song title is repeated in lyrics, and word count. 
+Next, I imported the 'udpipe' language model and wrote a function to count the word types for each song lyrics and got these amounts in our data frame, and will eventually add word type counts to the data set.
+
+
+Part 3: Find a lyric hosting service (such as www.azlyrics.com or www.songlyrics.com, though these aren't the only options) that provides full lyrics to songs. Ideally, the URLs for these songs follow a reproducible pattern. Write a function that can automatically capture these song lyrics for your top songs from part 1, and then gather the lyrics. Do your best to keep this function general, but you may need to write code for specific instances.
+
+## Webscraping
+
+Next, we chose the site host 'songlyrics.com' by taking the artist and song name we generated previously and got a url from the site host. Eventually, we wrote two main functions: one for generating the URL and one for webscraping. 
+
+  1. URL Generate Function
+```{r, include=FALSE}
+generate_songlyrics_urls <- function(df, artist_col, song_col, base_url_template) {
+  # Format for URL changing '-' and lowercase
+  format_for_url <- function(x) {
+    x <- tolower(x)                 
+    x <- gsub("[^a-z0-9 ]", "", x)  # remove special characters
+    x <- gsub(" +", "-", x)         # replace spaces with hyphens
+    return(x)
+  }
+  # Extract base URL structure 4th Argument
+  base_parts <- unlist(strsplit(base_url_template, "/"))
+  base_domain <- paste(base_parts[1:3], collapse = "/")  # "https://www.songlyrics.com"
+  
+  # Generate URLs
+  urls <- mapply(function(artist, song) {
+    artist_url <- format_for_url(artist)
+    song_url <- format_for_url(song)
+    paste0(base_domain, "/", artist_url, "/", song_url, "-lyrics/")
+  }, df[[artist_col]], df[[song_col]])
+  
+  return(urls)
+}
+```
+
+This generated our URL from our Main Data Frame. Here is an example of the URL we generated.
+
+```{r, echo=FALSE}
+url_before_scrape <- lyrics_df[["url"]][1]
+cat(url_before_scrape)
+```
+
+## Webscraping(cont.)
+
+For the Second Function we took the URL we generated from the previous function and did the webscraping with this function
+
+  2. Scrape Function
+  
+```{r, include=FALSE}
+scrape_lyrics_from_urls <- function(df, url_col, lyrics_col_name = "lyrics") {
+  get_lyrics <- function(url) {
+    tryCatch({ #tryCatch safely handle issues with Scraping returning NA in such cases like a Network Error
+      webpage <- read_html(url) #Read HTML from URL
+      
+      # Extract lyrics from the page
+      # CSS Selector
+      lyrics_node <- html_node(webpage, "#songLyricsDiv")
+      
+      # Get text and clean it up
+      lyrics <- html_text(lyrics_node)
+      lyrics <- trimws(lyrics)
+      return(lyrics)
+    }, error = function(e) {
+      return(NA)  # Return NA on failure
+    })
+  }
+  # Apply the scraping function to each URL
+  df[[lyrics_col_name]] <- sapply(df[[url_col]], get_lyrics)
+
+  return(df)
+}
+```
+
+## Lyrics Webscrape
+
+Here is an example of what the scraped lyrics turned out to be.
+
+```{r, include=FALSE}
+lyrics_sample_eddie_rabbit <- lyrics_df[["lyrics"]][523]
+cat(lyrics_sample_eddie_rabbit)
+```
+
+## Extra File from Webscraping and Formatting
+
+The two functions were used in these seperate markdown files to help generate our final data set. Download Code is located below and from github.
+
+  - From file code (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/SaulaiVueCode.Rmd) AND (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/missingSVCode.Rmd) Download Code Below.
+  - Note: Some markdown files were created by different group members working at different on the group project, and are not seemlessly integrated together or required a file that may not be there anymore.
+        
+```{r setup, echo=FALSE, include=FALSE}
+# Download Code for URL generate, and Webscrape
+url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/SaulaiVueCode.Rmd"
+download.file(url, destfile = "scrape_lyrics_files.Rmd", mode = "wb")
+file.edit("scrape_lyrics_files.Rmd")
+# Download Code for Webscrape, and formatting data frame
+url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/missingSVCode.Rmd"
+download.file(url, destfile = "scrape_lyrics_files2.Rmd", mode = "wb")
+file.edit("scrape_lyrics_files2.Rmd")
+```
+
+## Data Formatting Steps
+
+To format the lyric strings to get our main data set, we removed all punctuation(except apostrophe), unnecessary spaces, words within brackets, and section titles like [Verse], [Chorus], [Artist Duet Part], etc.
+
+Next, we implemented other functions to our lyrics to get the most common words used (phrase_repetition), and amount of times the title (title_repetition_count) was repeated in. And renamed our column titles.
+
+
+## Udpipe Language Model
+
+- 'udpipe' package is a language model used for tagging, converting words, and defining words from their parts of speech.
+- In our case, we're using this model to estimate the word being used in it's sentence context and evaluating the word as a noun, verb, adjective, etc.
+
 
 ```{r}
+install.packages("udpipe")
+library(udpipe)
+model <- udpipe_download_model(language = "english") #import english model
+ud_model <- udpipe_load_model(model$file_model)
+```
 
+
+## Function to Count Word Type Using Udpipe
+- function tags words in a string, trims white spaces, annotates and counts the word type in string
+
+```{r}
+count_pos_types <- function(df, column_name, ud_model) {
+  # Store results in a list
+  pos_counts_list <- lapply(df[[column_name]], function(text) {
+    if (is.na(text) || trimws(text) == "") return(data.frame())
+    # Annotate the text
+    annotation <- udpipe_annotate(ud_model, x = text)
+    anno_df <- as.data.frame(annotation)
+    # Count POS tags
+    table(anno_df$upos)
+  })
+  # Convert to a tidy data frame
+pos_summary <- do.call(rbind, lapply(seq_along(pos_counts_list), function(i) {
+  pos_counts <- pos_counts_list[[i]]
+  
+  if (!is.null(pos_counts) && length(pos_counts) > 0) {
+    row <- as.data.frame(as.table(pos_counts))
+    row$id <- i
+    return(row)
+  } else {
+    return(data.frame(Var1 = NA, Freq = NA, id = i))
+  }
+}))
+  # Reshape to wide format: one row per observation, POS tags as columns+
+  pos_wide <- pivot_wider(pos_summary, names_from = Var1, values_from = Freq, values_fill = 0)
+  # Join with original data frame (by row index)
+  df$id_tmp <- seq_len(nrow(df))
+  result <- merge(df, pos_wide, by.x = "id_tmp", by.y = "id", all.x = TRUE)
+  result$id_tmp <- NULL
+  return(result)
+}
+```
+
+## Parts of Speech Counted by Function (our column names)
+
+noun, verb, adjective, adposition, adverb, proper_noun, interjection, numeral,particle, pronoun, subordinating_conj, coordinating_conj, determiner, punctuation, symbol, other.
+
+```{r}
+result_types <- count_pos_types(lyrics_df, "lyrics", ud_model)
+View(result_types)
+```
+
+## Main Data Frame
+
+```{r, echo=FALSE}
+head(lyrics_df)
+```
+
+
+Step 4: Create two measures of song repetitiveness. Write a function (or two) to measure song repetitiveness, and apply it to each of the songs from part 1. Suggestions for "repetitiveness" include (but are definitely not limited to): "Do songs repeat the same phrase frequently?" and "Do songs repeat their song title frequently"
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Load summarized data
+repetitiveness_summary <- read.csv("Song_Repetition_Summary.csv")
+
+# Title repetition trend visualization
+ggplot(repetitiveness_summary, aes(x = Year, y = avg_title_repetition)) +
+  geom_line(color = "blue", size = 1) +
+  geom_point(color = "blue", size = 2) +
+  labs(
+    title = "Title Repetition Over Time",
+    x = "Year",
+    y = "Average Title Repetition Count"
+  ) +
+  theme_minimal()
 
 ```
 
-##
+
+Summary of Title Repetition Trends
+Key Findings
+Early Years (1958–1980s):
+Song titles appeared less frequently in lyrics.
+Lyrics were more story-driven, focusing on narratives rather than repetition.
+Genres like classic rock, jazz, and folk had minimal reliance on repeated hooks.
+
+1990s–2010s:
+Gradual increase in title repetition.
+Pop and hip-hop music adopted catchier hooks, making song titles repeat more often.
+Radio play and streaming services started rewarding songs with memorable choruses.
+
+2010s–2020s:
+Significant spike in title repetition.
+Songs now repeat titles multiple times per chorus, making them more recognizable.
+Genres like hip-hop, EDM, and commercial pop use repetition as a marketing tool.
 
 
-5. Have songs become more repetitive over time? Summarize and visualize your repetitive measures from part 4. 
+
+Part 5: Have songs become more repetitive over time? Summarize and visualize your repetitive measures from part 4. 
 
 
-6. (If possible) Extend your work to more songs! Consider more questions, like "Does genre matter?".
+
+
+
+
+
+Part 6: (If possible) Extend your work to more songs! Consider more questions, like "Does genre matter?".
+
+
+
+
 
 
 ```{r}

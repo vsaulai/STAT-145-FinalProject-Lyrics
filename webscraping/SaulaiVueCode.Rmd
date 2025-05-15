@@ -82,7 +82,7 @@ view(artist_songs20_split)
 generate_songlyrics_urls <- function(df, artist_col, song_col, base_url_template) {
   # Format for URL changing '-' and lowercase
   format_for_url <- function(x) {
-    x <- tolower(x)                 # lowercase
+    x <- tolower(x)                 
     x <- gsub("[^a-z0-9 ]", "", x)  # remove special characters
     x <- gsub(" +", "-", x)         # replace spaces with hyphens
     return(x)
