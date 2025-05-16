@@ -19,7 +19,16 @@ library(ggplot2)
 library(gganimate)
 library(transformr)
 library(scales)
+library(wordcloud)
+library(RColorBrewer)
+library(purrr)
+library(litedown) # dependency of ggwordcloud
+library(markdown) # dependency of ggwordcloud
+library(jpeg) # dependency of ggwordcloud
+library(gridtext) # dependency of ggwordcloud
+library(ggwordcloud)
 ```
+
 
 
 ## Import Main Data Frame
@@ -515,6 +524,63 @@ ggplot(wordcount_by_year, aes(x = as.numeric(Year), y = avg_noun + avg_proper_no
     y = "Average Noun Count"
   ) +
   theme_minimal()
+
+```
+
+
+```{r}
+# List of unwanted words to exclude
+unwanted_words <- c("the", "and", "to", "a", "it", "it's", "an", "is", "on", "so", "at", "too", "off", 
+                    "but", "that", "there", "their", "was", "by", "my", "your", "are", "am", "i'm", 
+                    "this", "has", "had", "in", "of", "i'd", "i've", "oh", "these", "into", "as", "no", 
+                    "ya", "only", "ah", "be", "do", "you'll", "who", "what", "when", "where")
+
+count_words_from_df <- function(df, column_name, exclude = NULL) {
+  if (!requireNamespace("stringr", quietly = TRUE)) install.packages("stringr")
+  library(stringr)
+
+  if (!column_name %in% names(df)) {
+    stop("The specified column does not exist in the data frame.")
+  }
+
+  lyrics_text <- paste(df[[column_name]], collapse = " ")
+  lyrics_text <- tolower(lyrics_text)
+  lyrics_text <- str_replace_all(lyrics_text, "[0-9]", " ")
+  lyrics_text <- str_squish(lyrics_text)
+
+  words <- unlist(str_split(lyrics_text, "\\s+"))
+
+  if (!is.null(exclude)) {
+    # Remove punctuation from both sides before comparison
+    words_clean <- str_replace_all(words, "[[:punct:]]", "")
+    exclude_clean <- str_replace_all(exclude, "[[:punct:]]", "")
+    words <- words[!words_clean %in% exclude_clean]
+  }
+
+  word_counts <- table(words)
+  word_df <- as.data.frame(word_counts, stringsAsFactors = FALSE)
+  colnames(word_df) <- c("word", "count")
+  word_df <- word_df[order(-word_df$count), ]
+
+  return(word_df)
+}
+
+# Use the function with unwanted words passed in
+counting_lyrics <- count_words_from_df(lyrics_df_count, "lyrics", exclude = unwanted_words)
+
+```
+
+# Wordcloud of the Entire Data Set
+(Removed most function words e.g. "a", "an", "it", etc.)
+```{r}
+wordcloud(
+  words = counting_lyrics$word,
+  freq = counting_lyrics$count,
+  min.freq = 100,                    # Only include words that appear 2+ times
+  max.words = 200,                 # Limit number of words in the cloud
+  random.order = FALSE,           # Plot most frequent words in center
+  colors = brewer.pal(7, "Dark2") # Use a nice color palette
+)
 
 ```
 
