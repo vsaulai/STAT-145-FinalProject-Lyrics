@@ -96,15 +96,15 @@ for (year in years) {
     all_years_data[[as.character(year)]] <- year_data
   }
 }
-# Combine data from all years (1959–2024)
-# data_1959_2024 <- bind_rows(all_years_data)
-#Combine the 1958 and 1959–2024 datasets
-# combined_data <- bind_rows(data_1958, data_1959_2024)
-#Retain Only Relevant Columns
-# cleaned_data <- combined_data %>%
-#  select(Title, `Artist(s)`, Year, Rank)
-# Save the Cleaned Data to a CSV File
-# write.csv(cleaned_data, "Top_20_Songs_1958_2024.csv", row.names = FALSE)
+ Combine data from all years (1959–2024)
+ data_1959_2024 <- bind_rows(all_years_data)
+Combine the 1958 and 1959–2024 datasets
+ combined_data <- bind_rows(data_1958, data_1959_2024)
+Retain Only Relevant Columns
+ cleaned_data <- combined_data %>%
+  select(Title, `Artist(s)`, Year, Rank)
+ Save the Cleaned Data to a CSV File
+ write.csv(cleaned_data, "Top_20_Songs_1958_2024.csv", row.names = FALSE)
 ```
 
 ### Extra File Generating Artist and Song Names
