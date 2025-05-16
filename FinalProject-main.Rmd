@@ -1,17 +1,12 @@
 ---
-title: "FinalProject-main"
-output: word_document
+title: "FinalProjectLyrics"
+author: "Saulai Vue, Jake Christenson, Kaleb Laramore"
 date: "2025-04-11"
 output: word_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-```
-
-## Lyrics Final Project
-
-```{r setup, include=FALSE, message=FALSE}
 library(dplyr)
 library(tidyr)
 library(tidyverse)
@@ -20,6 +15,13 @@ library(tidytext) #converts text into tidy format, and text mining
 library(httr)    #sends http requests and working with web API
 library(stringr) #working with strings into tidyverse and cleaning text strings
 library(readr)
+library(ggplot2)
+library(gganimate)
+library(transformr)
+library(scales)
+library(wordcloud)
+library(RColorBrewer)
+library(purrr)
 ```
 
 
@@ -29,16 +31,15 @@ lyrics_final_df_url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-Final
 lyrics_df <- read.csv(lyrics_final_df_url)
 ```
 
-## Webscraping
 
-Part 1: Your first task is to create a list of top songs, dating back to 1958 (when Billboard introduced it's Hot 100 yearly chart). You may want to start with just the yearly top song, but your work should be general enough to account for multiple songs per year. You may narrow your search to a particular genre if you like. You may use any website that provides this information, though you may try to find one that makes part 2 as simple as possible.
-git 
+# Part 1: 
+Your first task is to create a list of top songs, dating back to 1958 (when Billboard introduced it's Hot 100 yearly chart). You may want to start with just the yearly top song, but your work should be general enough to account for multiple songs per year. You may narrow your search to a particular genre if you like. You may use any website that provides this information, though you may try to find one that makes part 2 as simple as possible.
 
-Initially, we scraped from 1958-2024 for all Top 20 Billboard Songs from wikipedia. This function generated our list of songs and artist in our data frame.
+- Initially, we scraped from 1958-2024 for all Top 20 Billboard Songs from wikipedia. This function generated our list of songs and artist in our data frame.
 
-- Using a function, along with a set of code is used to webscrape for artist and song titles from wikipedia.
+-  With this, we wrote a function to be used to webscrape for artist and song titles from wikipedia.
 
-```{r, eval=FALSE, message = FALSE, include=FALSE}
+```{r, eval=FALSE, include=FALSE}
 #Scrape the 1958 Top 20 Songs
 scrape_1958_top_20 <- function() {
   # URL for 1958 data
@@ -106,11 +107,13 @@ for (year in years) {
 # write.csv(cleaned_data, "Top_20_Songs_1958_2024.csv", row.names = FALSE)
 ```
 
-## Extra File Generating Artist and Song Names
+### Extra File Generating Artist and Song Names
 
 Attached are extended files from other markdown files that helped in webscraping
-  - From Github file code (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/JakeChristiansenCode.Rmd) and Download Code Below
-  - Note: Some markdown files were created by different group members and worked at different times while working on the group project. We also reorganized github files so it may not work because we either moved the file or deleted it from the repository. Files may not be integrated seemlessly together.
+
+- From Github file code (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/JakeChristiansenCode.Rmd)
+
+- Note: Some markdown files were created by different group members and worked at different times while working on the group project. Files may not be integrated seemlessly together at the moment.
         
 ```{r, eval=FALSE, include=FALSE}
 url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/JakeChristiansenCode.Rmd"
@@ -118,22 +121,21 @@ download.file(url, destfile = "wiki_scrape_songlist.Rmd", mode = "wb")
 file.edit("wiki_scrape_songlist.Rmd")
 ```
 
-
-Part 2: For the top songs in part 1, gather some basic information: artist, title, year, genre (if appropriate), length, and other variables you think might be informative (sales figures, etc.).
+# Part 2:
+For the top songs in part 1, gather some basic information: artist, title, year, genre (if appropriate), length, and other variables you think might be informative (sales figures, etc.).
 While webscraping we wanted genres to be incorporated with our data frame. However, finding a site that can freely give us the genre type of a song was challenging so we abandoned this idea. Next
 
-We initially wanted a genre incorporated in our data set but it was beyond our ability. While attempting to scrape for genres, it did not work and had problems in the CSS selector or website host.
-Therefore, we just settled on: artist, song title, year, and rank of song. Eventually, we added other information like: common phrases repeated, number of times the song title is repeated in lyrics, and word count. 
-Next, I imported the 'udpipe' language model and wrote a function to count the word types for each song lyrics and got these amounts in our data frame, and will eventually add word type counts to the data set.
+- We initially wanted a genre incorporated in our data set but it was beyond our ability. While attempting to scrape for genres, it did not work and had problems in the CSS selector or website host.
+- Therefore, we just settled on: artist, song title, year, and rank of song. Eventually, we added other information like: common phrases repeated, number of times the song title is repeated in lyrics, and word count. 
+- Next, I imported the 'udpipe' language model and wrote a function to count the word types for each song lyrics and got these amounts in our data frame, and will eventually add word type counts to the data set.
 
 
-Part 3: Find a lyric hosting service (such as www.azlyrics.com or www.songlyrics.com, though these aren't the only options) that provides full lyrics to songs. Ideally, the URLs for these songs follow a reproducible pattern. Write a function that can automatically capture these song lyrics for your top songs from part 1, and then gather the lyrics. Do your best to keep this function general, but you may need to write code for specific instances.
+# Part 3: 
+Find a lyric hosting service (such as www.azlyrics.com or www.songlyrics.com, though these aren't the only options) that provides full lyrics to songs. Ideally, the URLs for these songs follow a reproducible pattern. Write a function that can automatically capture these song lyrics for your top songs from part 1, and then gather the lyrics. Do your best to keep this function general, but you may need to write code for specific instances.
 
-## Webscraping
+- Next, we chose the site host "songlyrics.com" by using the artist and song name we generated previously, we wrote a function to generate a url from the site host. With this, we wrote two main functions: one for generating the URL and one for webscraping.
 
-Next, we chose the site host 'songlyrics.com' by taking the artist and song name we generated previously and got a url from the site host. Eventually, we wrote two main functions: one for generating the URL and one for webscraping. 
-
-  1. URL Generate Function
+### URL Generate Function
 ```{r, eval=FALSE, include=FALSE}
 generate_songlyrics_urls <- function(df, artist_col, song_col, base_url_template) {
   # Format for URL changing '-' and lowercase
@@ -167,9 +169,7 @@ cat(url_before_scrape)
 
 ## Webscraping(cont.)
 
-For the Second Function we took the URL we generated from the previous function and did the webscraping with this function
-
-  2. Scrape Function
+For the Second Function we took the URL we generated from the previous function and did the webscraping.
   
 ```{r, eval=FALSE, include=FALSE}
 scrape_lyrics_from_urls <- function(df, url_col, lyrics_col_name = "lyrics") {
@@ -196,28 +196,28 @@ scrape_lyrics_from_urls <- function(df, url_col, lyrics_col_name = "lyrics") {
 }
 ```
 
-## Lyrics Webscrape
+\newpage
 
 Here is an example of what the scraped lyrics turned out to be.
 
+### Song: "You and I" (1983) by Eddie Rabbit and Crystal Gayle 
 ```{r, echo=FALSE}
 lyrics_sample_eddie_rabbit <- lyrics_df[["lyrics"]][523]
 cat(lyrics_sample_eddie_rabbit)
 ```
 
-## Main Data Frame
 
-```{r, echo=FALSE}
+```{r, include=FALSE}
 lyrics_final_df_url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/final_lyrics_df.csv"
 lyrics_df <- read.csv(lyrics_final_df_url)
 head(lyrics_df[, 1:6], n = 2)
 ```
 
-## Extra File from Webscraping and Formatting
+### Extra File from Webscraping and Formatting
 
 The two functions were used in these seperate markdown files to help generate our final data set. Download Code is located below and from github.
-  - From file code (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/SaulaiVueCode.Rmd) AND (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/missingSVCode.Rmd) Download Code Below.
-  - Note: Some markdown files were created by different group members working at different on the group project, and are not seemlessly integrated together or required a file that may not be there anymore.
+- From file code (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/SaulaiVueCode.Rmd) AND (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/webscraping/missingSVCode.Rmd)
+
         
 ```{r, eval=FALSE, include=FALSE}
 # These are seperate markdown files used to webscrape for our main data frame
@@ -232,11 +232,12 @@ download.file(url, destfile = "scrape_lyrics_files2.Rmd", mode = "wb")
 file.edit("scrape_lyrics_files2.Rmd")
 ```
 
-## Data Formatting Steps
 
-To format the lyric strings to get our main data set, we removed all punctuation(except apostrophe), unnecessary spaces, words within brackets, and section titles like [Verse], [Chorus], [Artist Duet Part], and other random words that may have unintentionally appeared during webscraping.
+# Data Formatting:
 
-Next, we implemented other functions to our lyrics to get the most common words used (phrase_repetition), and amount of times the title (title_repetition_count) was repeated in. And renamed our column titles.
+- To format the lyric strings to get our main data set, we removed all punctuation(except apostrophe), unnecessary spaces, words within brackets, and section titles like [Verse], [Chorus], [Artist Duet Part], and other random words that may have unintentionally appeared during webscraping.
+
+- Next, we implemented other functions to our lyrics to get the most common words used (phrase_repetition), and amount of times the title (title_repetition_count) was repeated in. And renamed our column titles.
 
 
 ## Udpipe Language Model
@@ -254,13 +255,13 @@ ud_model <- udpipe_load_model(model$file_model)
 
 ## Parts of Speech Counted by Function (our column names)
 
-These are UPOS(Universal Parts of Speech) tagset categories found in our data set from columns 10 - 27.
-noun, verb, adjective, adposition, auxilary verb, adverb, proper_noun, interjection, numeral, particle, pronoun, subordinating_conj, coordinating_conj, determiner, punctuation, symbol, other,
+- These are UPOS(Universal Parts of Speech) tagset categories found in our data set from columns 10 - 27.
+- noun, verb, adjective, adposition, auxilary verb, adverb, proper_noun, interjection, numeral, particle, pronoun, subordinating_conj, coordinating_conj, determiner, punctuation, symbol, other,
 
 
 
 ## Function to Count Word Type Using Udpipe
-- function tags words in a string, trims white spaces, annotates and counts the word type in string
+- Wrote a function that tags words in a string, trims white spaces, annotates and counts the word type in string and enters it back into the data frame.
 - This counts the tokenized tags of each word and stores it as an integer count.
 
 ```{r, eval=FALSE, include=FALSE}
@@ -298,9 +299,11 @@ pos_summary <- do.call(rbind, lapply(seq_along(pos_counts_list), function(i) {
 
 ## Extra File from Data Formatting
 
-The two functions were used in these seperate markdown files to help generate our final data set. Download Code is located below and from github.
-  - From file code (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/DataFormattingSV.Rmd)
-  - Note: Some markdown files were created by different group members working at different on the group project, and are not seemlessly integrated together or required a file that may not be there anymore.
+The two functions were used in these seperate markdown files to help generate our final data set. 
+
+- From file code (https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/DataFormattingSV.Rmd)
+
+- Note: Some markdown files were created by different group members working at different on the group project, and are not seemlessly integrated together or required a file that may not be there anymore.
 
 ```{r, eval=FALSE, include=FALSE}
 r_url <- "https://raw.githubusercontent.com/vsaulai/STAT-345-FinalProject-Lyrics/refs/heads/main/DataFormattingSV.Rmd"
@@ -309,33 +312,36 @@ file.edit("format_lyrics_files1.Rmd")
 ```
 
 ## Renaming the Parts of Speech for Clarity
-'udpipe uses the universal POS tags and are indicated below.
-- Renaming POS tags from english UDMODEL
-    noun = NOUN, verb = VERB,
-    adjective  = ADJ,
-    adposition = ADP,
-    adverb  = ADV,
-    auxiliary_verb = AUX,
-    proper_noun = PROPN,
-    interjection = INTJ,
-    numeral = NUM,
-    particle = PART,
-    pronoun = PRON,
-    subordinating_conj = SCONJ,
-    coordinating_conj = CCONJ,
-    determiner = DET,
-    punctuation = PUNCT,
-    symbol = SYM,
-    other = X,
+
+When running the "udpipe" language model with our function it classifies words with the universal POS tags and are indicated below
+### Parts of Speech (POS) Tags:
+
+- noun = NOUN  e.g. (office, car, table, freedom, happiness)
+- verb = VERB  e.g. (run, jump, sleep, exist, can, was, has)
+- adjective  = ADJ  e.g. (big, small, red, nice, American, his, their, smallest)
+- adposition = ADP  e.g. (in, on, at, by)
+- adverb  = ADV  e.g. (literally, elegantly, quickly, always, here, very)
+- auxiliary_verb = AUX  e.g. (might, had, may, shall, ought to, are, is)
+- proper_noun = PROPN  e.g. (Sarah, Titanic, Facebook, Microsoft, Rocky Rococo)
+- interjection = INTJ  e.g. (Phew, Ahem, Ahoy, Huh, Eww, Hurray, Oh)
+- numeral = NUM  e.g. (one, two, three, 1, 2, 3)
+- particle = PART  e.g. (up, out, on, to, off, in) i.e. (to know, cut in, jump off)
+- pronoun = PRON  e.g. (us, she, he, each, we, I, Them)
+- subordinating_conj = SCONJ  e.g. (after, because, even though, once, that, if, unless)
+- coordinating_conj = CCONJ  e.g. (for, and, nor, but, or, yet, so)
+- determiner = DET  e.g. (a, an, the, my, your, this, that, some)
+- punctuation = PUNCT  e.g. (most punctuation, ain't, findin', shan't,)
+- symbol = SYM e.g. (Yin and Yang, Peace Sign)
+- other = X  (unknowns)
 
 ## Final Main Data Frame Created from Webscraping
-  - Example of what the udpipe language model analyzed from our lyrics text for every song webscraped.
+  - Here is an example of what the udpipe language model tagged from our lyrical text for the first two songs.
 
 ```{r, echo=FALSE}
-head(lyrics_df[, 9:22], n = 5)
+head(lyrics_df[, 9:22], n = 2)
 ```
 
-## Removing NA values from Songs and Artists
+### Removing NA values from Songs and Artists
   - Some songs failed from webscrapping, either the website host did not have any lyrics or the url caused problems.
   - Lost approximately +100 potential songs by their rankings.
 
@@ -357,7 +363,7 @@ delete_na_rows <- function(df, column_name) {
 lyrics_df_remove_na <- delete_na_rows(lyrics_df, "lyrics")
 ```
 
-## Removing Unnecessary Columns
+### Removing Unnecessary Columns
 - Eventually, adding the row sums of total words estimated by udpipe model and finding the proportion of parts of speech.
 - Therefore, removing all non words that showed up in the data count to get the total.
 - Total Observations: 1190 Songs with Lyrics
@@ -424,15 +430,16 @@ yearly_averages_rounded <- lyrics_df_count %>%
     avg_pos_total = round(mean(pos_total, na.rm = TRUE), 2),
     .groups = 'drop'
   )
-head(yearly_averages_rounded[, 1:8], n = 4)
+head(yearly_averages_rounded[, 1:5], n = 4)
 ```
 
-Step 4: Create two measures of song repetitiveness. Write a function (or two) to measure song repetitiveness, and apply it to each of the songs from part 1. Suggestions for "repetitiveness" include (but are definitely not limited to): "Do songs repeat the same phrase frequently?" and "Do songs repeat their song title frequently"
+# Part 4 and 5: 
+Create two measures of song repetitiveness. Write a function (or two) to measure song repetitiveness, and apply it to each of the songs from part 1. Suggestions for "repetitiveness" include (but are definitely not limited to): "Do songs repeat the same phrase frequently?" and "Do songs repeat their song title frequently"
 
 ```{r, echo=FALSE}
 # Title repetition trend visualization
 ggplot(yearly_averages, aes(x = Year, y = avg_title_count)) +
-  geom_line(color = "steelblue", size = 1) +
+  geom_line(color = "steelblue", linewidth = 1) +
   geom_point(color = "blue", size = 2) +
   labs(
     title = "Title Repetition Over Time",
@@ -443,26 +450,27 @@ ggplot(yearly_averages, aes(x = Year, y = avg_title_count)) +
 
 ```
 
-Summary of Title Repetition Over Time
+## Summary of Title Repetition Over Time
 
-Part 5: Have songs become more repetitive over time? Summarize and visualize your repetitive measures from part 4. 
+Have songs become more repetitive over time? Summarize and visualize your repetitive measures from part 4. 
 
-Early Years (1958–1980s):
-Song titles appeared less frequently in lyrics.
-Lyrics were more story-driven, focusing on narratives rather than repetition.
-Genres like classic rock, jazz, and folk had minimal reliance on repeated hooks.
+### Early Years (1958–1980s):
+- Song titles appeared less frequently in lyrics.
+- Lyrics were more story-driven, focusing on narratives rather than repetition.
+- Genres like classic rock, jazz, and folk had minimal reliance on repeated hooks.
 
-1990s–2010s:
-Gradual increase in title repetition.
-Pop and hip-hop music adopted catchier hooks, making song titles repeat more often.
-Radio play and streaming services started rewarding songs with memorable choruses.
+### 1990s–2010s:
+- Gradual increase in title repetition.
+- Pop and hip-hop music adopted catchier hooks, making song titles repeat more often.
+- Radio play and streaming services started rewarding songs with memorable choruses.
 
-2010s–2020s:
-Significant spike in title repetition.
-Songs now repeat titles multiple times per chorus, making them more recognizable.
-Genres like hip-hop, EDM, and commercial pop use repetition as a marketing tool.
+### 2010s–2020s:
+- Significant spike in title repetition.
+- Songs now repeat titles multiple times per chorus, making them more recognizable.
+- Genres like hip-hop, EDM, and commercial pop use repetition as a marketing tool.
 
-Part 6: (If possible) Extend your work to more songs! Consider more questions, like "Does genre matter?".
+# Part 6: 
+(If possible) Extend your work to more songs! Consider more questions, like "Does genre matter?".
 
 ## Splitting into Periods by Decades into A List
 Next, We split our data into decades.
@@ -511,7 +519,9 @@ Taking the proportion of each song's POS type to total POS word for each year
 - Pronouns: hint at specifically someone but not whom i.e.(Him, Her, They, It, He, She, etc.) could be referencing an Ex boyfriend or girlfriend. So, we thought this might be a significant count.
 - Interjections: are emotional words like "Hurray!", "Hey", "Ow", they can oftentimes be related to slang which I though significant
 - Punctuation: may not seem relevant but it is sometimes indicating slang or 'double' words like can't, shouldn't, Ain't, etc. Slang words are a pretty significant in English Slang.
-- Function Word Group: is everything else: Determiners ("a", "an", "the"); Conjunctions both subordinating and coordinating("for", "and", "but", "whereas", "unless"); Adposition ("in", "with", "by") 'NA.' is other words that the language model did not comprehend
+- Function Word Group: is everything else: Determiners ("a", "an", "the"); Conjunctions both subordinating and coordinating("for", "and", "but", "whereas", "unless"); Adposition ("in", "with", "by") 'NA.' is other words that the language model did not comprehend.
+
+Below is an example of Proportions of POS types
 
 ```{r, echo=FALSE, include=FALSE}
 # 1958–1969
@@ -703,9 +713,8 @@ full_proportion_summary <- bind_rows(
 ```
 
 ```{r, echo=FALSE}
-head(full_proportion_summary)
+head(full_proportion_summary[, 1:5], n = 3)
 ```
-
 
 
 ```{r, include=FALSE}
@@ -717,14 +726,11 @@ long_proportion_summary  <- full_proportion_summary  %>%
     )
 ```
 
-# Computing Z-Scores within each POS Group
-
-- scale() standardizes the proportion within each POS category — so now we can see how each decade deviates from the average for that POS.
 
 ```{r, include=FALSE}
 z_score_prop_summary <- long_proportion_summary %>%
   group_by(pos) %>%
-  mutate(z_score = scale(proportion)) %>%
+  mutate(z_score = scale(proportion)) %>% # scale() standardizes the proportion within each POS category — so now we can see how each decade deviates from the average for that POS.
   ungroup()
 ```
 
@@ -737,32 +743,41 @@ ggplot(z_score_prop_summary, aes(x = decade, y = pos, fill = z_score)) +
     low = "blue", mid = "white", high = "red", midpoint = 0,
     name = "Z-Score"
   ) +
-  theme_minimal(base_size = 14) +
+  theme_minimal(base_size = 12) +
   labs(
-    title = "Z-Score Normalized Part-of-Speech Use by Decade",
+    title = "Z-Score Normalized POS Use by Decade",
     x = "Decade",
     y = "Part of Speech"
   ) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
-## Parts of Speech(POS) Heat Map
+
 Z-score is based off of a standard normal distribution
-What the Z-score means from the heat map is if:
-# Z-score > 0 :
-The proportion of that POS in this decade is above average compared to all other decades of the same POS.
-The higher the value, the more unusually high that POS usage was in that decade.
-# Z-score < 0 :
-The proportion of that POS in this decade is below average compared to all other decades of the same POS.
-# Z-score close to 0 :
-The proportion of POS usage is very close across the average of all decades.
+
+## What does the Z-score mean from the heat map?:
+
+### Z-score > 0 :
+
+- The proportion of that POS in this decade is above average compared to all other decades of the same POS.
+
+- The higher the value, the more unusually high that POS usage was in that decade.
+
+### Z-score < 0 :
+
+- The proportion of that POS in this decade is below average compared to all other decades of the same POS.
+
+### Z-score near 0 :
+
+- The proportion of POS usage is very close across the average of all decades.
 
 ## Key Observations
+
 - Between the 1980's to early 2000's, verbs usage in the Top 20 Songs of the Year were above the global average of verb usage during all other time periods. Verbs are used to describe "actions" and may be a linguistic preference to song writers from this time period. 
 - Meanwhile, verb usage was significantly below the average proportion from 1958-1969. It could be because the amount of instrumental songs were popular during this decade.
-- Proper Noun's i.e. names of Places, personal names, etc. were more significantly found in the top songs from 1958-1969. Colloquial references to other names were more popular in these songs than ever.
-- As the decade's went by pronoun usage was low, but the average proportion of pronoun usage grew with time. This isn't a surprise because references to "He", "She", "it", "them", etc. are rather popular in romantic songs nowadays.
-- Punctuations, often an indicator for slang like "Ain't", "'Til", "findin'" were more popular in the Top songs from 2020-2024 and the proportion of it were above the standard mean.
+- Proper Noun's i.e. names of places, personal names, etc. were more significantly found in the top songs from 1958-1969. Colloquial references to other names were also more popular in these songs.
+- Across the decade the pronoun usage starting out was low in the 60's and 70's, but the average proportion of pronoun usage grew with time. This isn't a surprise because references to "He", "She", "it", "them", etc. are rather popular in romantic songs nowadays.
+- Punctuations, often an indicator for slang like "Ain't", "'Til", "findin'" were more popular in the top songs from 2020-2024, and the proportion was above the standard mean.
 - Interjections, i.e. "Ahoy", "Hey", "Ugh", "Gee, etc. were especially popular in the top songs from 1958-1969 often dominated by Elvis Presley, and Elton John.
 
 ## Animated Stacked Area Plot Code
@@ -786,19 +801,18 @@ long_proportion_summary <- long_proportion_summary %>%
 
 ```
 
-## Parts of Speech Word Type Proportion Among Top Songs Across the Decades.
 
 ```{r, echo=FALSE}
 ggplot(long_proportion_summary, aes(x = pos, y = proportion, fill = pos)) +
   geom_col() +
   scale_y_continuous(labels = percent_format()) +
   labs(
-    title = "POS Word Type Proportions in Top Songs: {closest_state}",
+    title = "POS Proportions for Top Songs: {closest_state}",
     x = NULL,  # No label
     y = "Proportion of Total POS Words",
     fill = "POS Type"
   ) +
-  theme_minimal(base_size = 14) +
+  theme_minimal(base_size = 12) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
     axis.ticks.x = element_blank()     # Remove x-axis ticks
@@ -808,22 +822,27 @@ ggplot(long_proportion_summary, aes(x = pos, y = proportion, fill = pos)) +
 
 ```
 
+### Key Observations:
+- Most of the English language structure has relatively the same proportion of parts of speech types.
+- What differs are the trends that are gradually shifting the preferences of most songwriters or our semantics.
+- Some likely key errors could be within the language model, either not detecting accurately the semantic meaning behind modern words or lingo used in the past or present.
+- The semantic context of the lyrical sentence structure may differ.
+
+
+\newpage
+
+
 ```{r, eval=FALSE, include=FALSE}
 anim <- last_plot()
-animate(anim, duration = 10, fps = 15, width = 800, height = 600, renderer = gifski_renderer("pos_animation.gif"))
+animate(anim, duration = 10, fps = 15, width = 850, height = 600, renderer = gifski_renderer("pos_animation.gif"))
 ```
 
 
-## Average Amount of Words Count per Year(Top 20 Billboard Songs)
-
-- Takes every Top Billboard Songs Per Year and measures the average word count per year
-- Word counts increased among songs since 1958.
-
-```{r, echo=FALSE}
+```{r, echo=FALSE, message=FALSE}
 wordcount_by_year <- bind_rows(yearly_averages)
 
 ggplot(wordcount_by_year, aes(x = as.numeric(Year), y = avg_word_count)) +
-  geom_line(color = "steelblue", size = 1) +
+  geom_line(color = "steelblue", linewidth = 1) +
   geom_point(color = "red", size = 1.5) +
   geom_smooth(method = "lm", color = "darkgreen", linetype = "dashed", se = TRUE) +
   labs(
@@ -835,12 +854,15 @@ ggplot(wordcount_by_year, aes(x = as.numeric(Year), y = avg_word_count)) +
 
 ```
 
-## Verb Count per Year
-- As with word count the amount of verb count per year increased since 1958 too.
+## Average Amount of Words Count per Year(Top 20 Billboard Songs)
 
-```{r, echo=FALSE}
+- Takes every Top Billboard Songs Per Year and measures the average word count per year
+- Word counts increased among songs since 1958.
+
+
+```{r, echo=FALSE, message=FALSE}
 ggplot(wordcount_by_year, aes(x = as.numeric(Year), y = avg_verb + avg_auxiliary_verb)) +
-  geom_line(color = "steelblue", size = 1) +
+  geom_line(color = "steelblue", linewidth = 1) +
   geom_point(color = "darkred", size = 1.5) +
   geom_smooth(method = "lm", color = "black", linetype = "dashed", se = TRUE) +
   labs(
@@ -852,3 +874,70 @@ ggplot(wordcount_by_year, aes(x = as.numeric(Year), y = avg_verb + avg_auxiliary
 
 ```
 
+## Verb Count per Year
+- As the same with word count, the amount of verb count per year has significantly increased since 1958.
+
+```{r, echo=FALSE, message=FALSE}
+# List of unwanted words to exclude
+unwanted_words <- c("the", "and", "to", "a", "it", "it's", "an", "is", "on", "so", "at", "too", "off", 
+                    "but", "that", "there", "their", "was", "by", "my", "your", "are", "am", "i'm", 
+                    "this", "has", "had", "in", "of", "i'd", "i've", "oh", "these", "into", "as", "no", 
+                    "ya", "only", "ah", "be", "do", "you'll", "who", "what", "when", "where")
+
+count_words_from_df <- function(df, column_name, exclude = NULL) {
+  if (!requireNamespace("stringr", quietly = TRUE)) install.packages("stringr")
+  library(stringr)
+
+  if (!column_name %in% names(df)) {
+    stop("The specified column does not exist in the data frame.")
+  }
+
+  lyrics_text <- paste(df[[column_name]], collapse = " ")
+  lyrics_text <- tolower(lyrics_text)
+  lyrics_text <- str_replace_all(lyrics_text, "[0-9]", " ")
+  lyrics_text <- str_squish(lyrics_text)
+
+  words <- unlist(str_split(lyrics_text, "\\s+"))
+
+  if (!is.null(exclude)) {
+    # Remove punctuation from both sides before comparison
+    words_clean <- str_replace_all(words, "[[:punct:]]", "")
+    exclude_clean <- str_replace_all(exclude, "[[:punct:]]", "")
+    words <- words[!words_clean %in% exclude_clean]
+  }
+
+  word_counts <- table(words)
+  word_df <- as.data.frame(word_counts, stringsAsFactors = FALSE)
+  colnames(word_df) <- c("word", "count")
+  word_df <- word_df[order(-word_df$count), ]
+
+  return(word_df)
+}
+
+# Use the function with unwanted words passed in
+counting_lyrics <- count_words_from_df(lyrics_df_count, "lyrics", exclude = unwanted_words)
+
+```
+
+# Wordcloud: Top 200 Most Frequently Used Words in Top 20 Billboard Songs (1958-2024)
+
+(Removed most function words e.g. "a", "an", "it", etc.)
+```{r, echo=FALSE}
+wordcloud(
+  words = counting_lyrics$word,
+  freq = counting_lyrics$count,
+  min.freq = 100,                    # Only include words that appear 100+ times
+  max.words = 200,                 # Limit number of words in the cloud
+  random.order = FALSE,           # Plot most frequent words in center
+  colors = brewer.pal(7, "Dark2") # Use a nice color palette
+)
+
+```
+
+
+## Conclusions:
+
+- Songs repeating their own titles in their lyrics have been on average increasing since 2010
+- Words counts of songs have gotten longer over time
+- Older songs tended to favor instrumentals or solo parts which could be why the amount of lyrical words were generally less from 1958-1979.
+- Verb usage in the 1980's and 90's were proportionately in more top songs and above the standard mean across all other decades.
