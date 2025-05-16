@@ -168,11 +168,11 @@ View(result_types)
 ```
 
 ## Renaming POS tags from english UDMODEL
-    noun = NOUN,
-    verb = VERB,
+    noun = NOUN, verb = VERB,
     adjective  = ADJ,
     adposition = ADP,
     adverb  = ADV,
+    auxiliary_verb = AUX,
     proper_noun = PROPN,
     interjection = INTJ,
     numeral = NUM,
@@ -205,7 +205,10 @@ main_lyrics_df <- result_types %>%
     symbol = SYM,
     other = X,
   )
-View(main_lyrics_df)
+# Print 5 Columns 9:22 for 
+
+head(df[9:22, ], n = 5)
+
 ```
 
 
